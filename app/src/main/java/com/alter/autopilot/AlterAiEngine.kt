@@ -18,8 +18,7 @@ object AlterAiEngine {
         val customPrompt = prefs.getString("ai_personality", "")?.trim().orEmpty()
 
         if (apiKey.isBlank()) {
-            return prefs.getString("reply", "Здравствуйте! Сейчас не могу ответить, напишу позже.")
-                ?.trim().orEmpty()
+            return prefs.getString("reply", "Сейчас не могу ответить, напишу позже.").orEmpty()
         }
 
         val systemInstruction = if (customPrompt.isNotBlank()) {
@@ -32,9 +31,9 @@ object AlterAiEngine {
 
         return try {
             val reply = callGemini(apiKey, systemInstruction)
-            if (reply.isNotBlank()) reply else prefs.getString("reply", "").orEmpty()
+            if (reply.isNotBlank()) reply else prefs.getString("reply", "Сейчас не могу ответить, напишу позже.").orEmpty()
         } catch (_: Exception) {
-            prefs.getString("reply", "").orEmpty()
+            prefs.getString("reply", "Сейчас не могу ответить, напишу позже.").orEmpty()
         }
     }
 
@@ -43,7 +42,7 @@ object AlterAiEngine {
         val apiKey = prefs.getString("ai_api_key", "")?.trim().orEmpty()
 
         if (apiKey.isBlank()) {
-            return "Чтобы я мог отвечать на вопросы, введи бесплатный ключ Gemini в настройках ALTER."
+            return "Чтобы я мог отвечать на вопросы, укажи бесплатный ключ Gemini в настройках ALTER."
         }
 
         val prompt = buildString {
@@ -64,59 +63,71 @@ object AlterAiEngine {
     }
 
     private fun callGemini(apiKey: String, prompt: String): String {
-        val endpoint = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=$apiKey"
-        val url = URL(endpoint)
-        val conn = (url.openConnection() as HttpURLConnection).apply {
-            requestMethod = "POST"
-            setRequestProperty("Content-Type", "application/json; charset=utf-8")
-            connectTimeout = 10000
-            readTimeout = 15000
-            doOutput = true
-        }
+        val models = listOf(
+            "gemini-flash-lite-latest",
+            "gemini-flash-latest",
+            "gemini-3.5-flash-lite",
+            "gemini-3.8-flash"
+        )
+        var lastError: Exception? = null
 
-        val bodyJson = JSONObject().apply {
-            val contents = JSONArray().apply {
-                val item = JSONObject().apply {
-                    val parts = JSONArray().apply {
-                        put(JSONObject().apply { put("text", prompt) })
-                    }
-                    put("parts", parts)
+        for (model in models) {
+            try {
+                val endpoint = "https://generativelanguage.googleapis.com/v1beta/models/$model:generateContent?key=$apiKey"
+                val url = URL(endpoint)
+                val conn = (url.openConnection() as HttpURLConnection).apply {
+                    requestMethod = "POST"
+                    setRequestProperty("Content-Type", "application/json; charset=utf-8")
+                    connectTimeout = 8000
+                    readTimeout = 12000
+                    doOutput = true
                 }
-                put(item)
-            }
-            put("contents", contents)
 
-            val genConfig = JSONObject().apply {
-                put("maxOutputTokens", 250)
-                put("temperature", 0.7)
+                val bodyJson = JSONObject().apply {
+                    val contents = JSONArray().apply {
+                        val item = JSONObject().apply {
+                            val parts = JSONArray().apply {
+                                put(JSONObject().apply { put("text", prompt) })
+                            }
+                            put("parts", parts)
+                        }
+                        put(item)
+                    }
+                    put("contents", contents)
+
+                    val genConfig = JSONObject().apply {
+                        put("maxOutputTokens", 250)
+                        put("temperature", 0.7)
+                    }
+                    put("generationConfig", genConfig)
+                }
+
+                OutputStreamWriter(conn.outputStream, StandardCharsets.UTF_8).use { writer ->
+                    writer.write(bodyJson.toString())
+                    writer.flush()
+                }
+
+                val code = conn.responseCode
+                if (code in 200..299) {
+                    val response = BufferedReader(InputStreamReader(conn.inputStream, StandardCharsets.UTF_8)).use {
+                        it.readText()
+                    }
+                    val root = JSONObject(response)
+                    val candidates = root.optJSONArray("candidates") ?: continue
+                    if (candidates.length() == 0) continue
+                    val first = candidates.getJSONObject(0)
+                    val content = first.optJSONObject("content") ?: continue
+                    val parts = content.optJSONArray("parts") ?: continue
+                    if (parts.length() == 0) continue
+                    val text = parts.getJSONObject(0).optString("text", "").trim()
+                    if (text.isNotBlank()) return text
+                }
+            } catch (e: Exception) {
+                lastError = e
             }
-            put("generationConfig", genConfig)
         }
 
-        OutputStreamWriter(conn.outputStream, StandardCharsets.UTF_8).use { writer ->
-            writer.write(bodyJson.toString())
-            writer.flush()
-        }
-
-        val code = conn.responseCode
-        if (code in 200..299) {
-            val response = BufferedReader(InputStreamReader(conn.inputStream, StandardCharsets.UTF_8)).use {
-                it.readText()
-            }
-            val root = JSONObject(response)
-            val candidates = root.optJSONArray("candidates") ?: return ""
-            if (candidates.length() == 0) return ""
-            val first = candidates.getJSONObject(0)
-            val content = first.optJSONObject("content") ?: return ""
-            val parts = content.optJSONArray("parts") ?: return ""
-            if (parts.length() == 0) return ""
-            return parts.getJSONObject(0).optString("text", "").trim()
-        } else {
-            val errStream = conn.errorStream
-            val errText = if (errStream != null) {
-                BufferedReader(InputStreamReader(errStream, StandardCharsets.UTF_8)).use { it.readText() }
-            } else ""
-            throw RuntimeException("HTTP $code: $errText")
-        }
+        if (lastError != null) throw lastError
+        return ""
     }
 }
