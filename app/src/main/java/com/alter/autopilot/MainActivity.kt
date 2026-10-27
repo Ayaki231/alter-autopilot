@@ -600,6 +600,101 @@ class MainActivity : Activity(), TextToSpeech.OnInitListener {
     }
 
     private fun executeCommand(command: String) {
+
+        // SMART_INTENT_ROUTER_012
+        val intentResult = if (
+            command.contains("автоответ")
+        ) {
+            AlterIntentParser.Result(
+                AlterIntentParser.Type.UNKNOWN
+            )
+        } else {
+            AlterIntentParser.parse(command)
+        }
+
+        when (intentResult.type) {
+            AlterIntentParser.Type.READ_SCREEN -> {
+                val service = ScreenObserverService.instance
+                if (service == null) {
+                    status.text = "Включи доступ к специальным возможностям."
+                    startActivity(
+                        Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)
+                    )
+                } else {
+                    val content = service.readCurrentScreen()
+                    status.text = "ALTER читает экран."
+                    speak(content)
+                }
+                return
+            }
+
+            AlterIntentParser.Type.SET_ALARM -> {
+                val ok = AlterActions.setAlarm(
+                    this,
+                    intentResult.hour,
+                    intentResult.minute
+                )
+                status.text = if (ok) {
+                    "Открываю установку будильника."
+                } else {
+                    "Не удалось открыть будильник."
+                }
+                if (ok) speak("Открываю будильник.")
+                return
+            }
+
+            AlterIntentParser.Type.SAVE_NOTE -> {
+                val ok = AlterActions.saveNote(
+                    this,
+                    intentResult.argument
+                )
+                status.text = if (ok) {
+                    "Заметка сохранена."
+                } else {
+                    "Не удалось сохранить заметку."
+                }
+                if (ok) speak("Заметка сохранена.")
+                return
+            }
+
+            AlterIntentParser.Type.INSTALL_APP -> {
+                val ok = AlterActions.findAppInStore(
+                    this,
+                    intentResult.argument
+                )
+                status.text = if (ok) {
+                    "Ищу приложение в Google Play."
+                } else {
+                    "Не удалось открыть магазин приложений."
+                }
+                if (ok) speak("Открываю магазин приложений.")
+                return
+            }
+
+            AlterIntentParser.Type.OPEN_APP -> {
+                val target = intentResult.argument
+                if (target == "настройки") {
+                    startActivity(Intent(Settings.ACTION_SETTINGS))
+                    return
+                }
+
+                val ok = AlterActions.openApp(this, target)
+                if (ok) {
+                    status.text = "Открываю $target"
+                    speak("Открываю $target")
+                    return
+                }
+
+                // Неизвестное приложение: старый обработчик
+                // получает возможность выполнить команду.
+            }
+
+            AlterIntentParser.Type.UNKNOWN -> {
+                // Оставляем существующие команды без изменений.
+            }
+        }
+
+
         when {
             "что на экране" in command ||
             "прочитай экран" in command ||
