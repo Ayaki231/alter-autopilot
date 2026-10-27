@@ -12,7 +12,7 @@ android {
         }
     }
  namespace = "com.alter.autopilot"; compileSdk = 34
-    defaultConfig { applicationId = "com.alter.autopilot"; minSdk = 26; targetSdk = 34; versionCode = 6; versionName = "0.6" }
+    defaultConfig { applicationId = "com.alter.autopilot"; minSdk = 26; targetSdk = 34; versionCode = 7; versionName = "0.7" }
 
     buildTypes {
         getByName("release") {
@@ -22,4 +22,9 @@ android {
     }
     compileOptions { sourceCompatibility = JavaVersion.VERSION_17; targetCompatibility = JavaVersion.VERSION_17 }
     kotlinOptions { jvmTarget = "17" }
+}
+
+
+dependencies {
+    implementation("cz.adaptech.tesseract4android:tesseract4android:4.7.0")
 }

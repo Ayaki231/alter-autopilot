@@ -11,6 +11,12 @@ import android.text.InputType
 import android.widget.*
 import java.util.Locale
 
+import android.graphics.BitmapFactory
+import android.net.Uri
+import com.googlecode.tesseract.android.TessBaseAPI
+import java.io.File
+
+
 class MainActivity : Activity(), TextToSpeech.OnInitListener {
     private var tts: TextToSpeech? = null
     private var ttsReady = false
@@ -41,6 +47,7 @@ class MainActivity : Activity(), TextToSpeech.OnInitListener {
     }
 
     private val voiceRequest = 1001
+    private val imageRequest = 1002
     private lateinit var enable: Switch
     private lateinit var status: TextView
 
@@ -58,7 +65,7 @@ class MainActivity : Activity(), TextToSpeech.OnInitListener {
         }
 
         val title = TextView(this).apply {
-            text = "ALTER Autopilot 0.5 Voice + Screen"
+            text = "ALTER Autopilot 0.7 Vision"
             textSize = 24f
         }
 
@@ -183,11 +190,77 @@ class MainActivity : Activity(), TextToSpeech.OnInitListener {
         }
         root.addView(screenButton)
 
+
+        val visionButton = Button(this).apply {
+            text = "📷 ПРОЧИТАТЬ ФОТОГРАФИЮ"
+            setOnClickListener {
+                val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
+                    type = "image/*"
+                    addCategory(Intent.CATEGORY_OPENABLE)
+                }
+                startActivityForResult(intent, imageRequest)
+            }
+        }
+        root.addView(visionButton)
+
         setContentView(ScrollView(this).apply {
             addView(root)
         })
 
         refresh()
+    }
+
+
+    private fun recognizeImage(uri: Uri) {
+        status.text = "ALTER анализирует изображение..."
+
+        Thread {
+            try {
+                val bitmap = contentResolver.openInputStream(uri)?.use {
+                    BitmapFactory.decodeStream(it)
+                } ?: throw Exception("Не удалось открыть изображение")
+
+                val tessData = File(filesDir, "tessdata")
+                if (!tessData.exists()) tessData.mkdirs()
+
+                for (language in listOf("rus", "eng")) {
+                    val target = File(tessData, "$language.traineddata")
+                    if (!target.exists() || target.length() == 0L) {
+                        assets.open("tessdata/$language.traineddata").use { input ->
+                            target.outputStream().use { output ->
+                                input.copyTo(output)
+                            }
+                        }
+                    }
+                }
+
+                val api = TessBaseAPI()
+                try {
+                    if (!api.init(filesDir.absolutePath, "rus+eng")) {
+                        throw Exception("Не удалось запустить OCR")
+                    }
+                    api.setImage(bitmap)
+                    val result = api.utF8Text.orEmpty().trim()
+
+                    runOnUiThread {
+                        val message = if (result.isBlank())
+                            "Текст на изображении не найден."
+                        else
+                            "На изображении написано: $result"
+
+                        status.text = message.take(1500)
+                        speak(message)
+                    }
+                } finally {
+                    api.recycle()
+                    bitmap.recycle()
+                }
+            } catch (e: Exception) {
+                runOnUiThread {
+                    status.text = "Vision: ${e.message}"
+                }
+            }
+        }.start()
     }
 
     private fun listen() {
@@ -222,6 +295,11 @@ class MainActivity : Activity(), TextToSpeech.OnInitListener {
         data: Intent?
     ) {
         super.onActivityResult(requestCode, resultCode, data)
+
+        if (requestCode == imageRequest && resultCode == RESULT_OK) {
+            data?.data?.let { recognizeImage(it) }
+            return
+        }
 
         if (requestCode != voiceRequest ||
             resultCode != RESULT_OK) return
