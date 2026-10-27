@@ -6,5 +6,18 @@
         <service android:name=".AutopilotListener" android:label="ALTER: доступ к уведомлениям" android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE" android:exported="false">
             <intent-filter><action android:name="android.service.notification.NotificationListenerService"/></intent-filter>
         </service>
+
+        <service
+            android:name=".ScreenObserverService"
+            android:label="ALTER: чтение экрана"
+            android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.accessibilityservice.AccessibilityService"/>
+            </intent-filter>
+            <meta-data
+                android:name="android.accessibilityservice"
+                android:resource="@xml/alter_accessibility"/>
+        </service>
     </application>
 </manifest>

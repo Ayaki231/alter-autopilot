@@ -134,6 +134,23 @@ class MainActivity : Activity() {
             refreshButton, log
         ).forEach { root.addView(it) }
 
+
+        val screenButton = Button(this).apply {
+            text = "ЧТО НА ЭКРАНЕ?"
+            setOnClickListener {
+                val service = ScreenObserverService.instance
+                if (service == null) {
+                    status.text = "Включи ALTER в специальных возможностях."
+                    startActivity(
+                        Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)
+                    )
+                } else {
+                    status.text = service.readCurrentScreen()
+                }
+            }
+        }
+        root.addView(screenButton)
+
         setContentView(ScrollView(this).apply {
             addView(root)
         })

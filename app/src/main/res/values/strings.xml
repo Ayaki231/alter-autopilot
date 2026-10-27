@@ -1,0 +1,3 @@
+<resources>
+    <string name="accessibility_description">ALTER читает доступные элементы экрана только по вашему запросу. Управление экраном отключено.</string>
+</resources>
