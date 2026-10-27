@@ -11,7 +11,12 @@ import android.text.InputType
 import android.widget.*
 import java.util.Locale
 
+import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.graphics.Color
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
 import android.net.Uri
 import com.googlecode.tesseract.android.TessBaseAPI
 import java.io.File
@@ -50,7 +55,8 @@ class MainActivity : Activity(), TextToSpeech.OnInitListener {
     private val imageRequest = 1002
     private lateinit var enable: Switch
     private lateinit var status: TextView
-
+    private lateinit var visionResult: TextView
+    private var lastVisionText = ""
     private val prefs by lazy {
         getSharedPreferences("alter", MODE_PRIVATE)
     }
@@ -65,7 +71,7 @@ class MainActivity : Activity(), TextToSpeech.OnInitListener {
         }
 
         val title = TextView(this).apply {
-            text = "ALTER Autopilot 0.7 Vision"
+            text = "ALTER Autopilot 0.8 Vision Pro"
             textSize = 24f
         }
 
@@ -203,6 +209,46 @@ class MainActivity : Activity(), TextToSpeech.OnInitListener {
         }
         root.addView(visionButton)
 
+        val visionTitle = TextView(this).apply {
+            text = "ALTER VISION — РЕЗУЛЬТАТ"
+            textSize = 18f
+            setPadding(0, 24, 0, 12)
+        }
+        root.addView(visionTitle)
+
+        visionResult = TextView(this).apply {
+            text = "Выбери фотографию для распознавания."
+            textSize = 16f
+            setPadding(16, 16, 16, 16)
+            setBackgroundColor(Color.rgb(235, 240, 245))
+            setTextColor(Color.BLACK)
+        }
+        root.addView(visionResult)
+
+        val readResult = Button(this).apply {
+            text = "🔊 ПРОЧИТАТЬ РЕЗУЛЬТАТ"
+            setOnClickListener {
+                if (lastVisionText.isNotBlank()) {
+                    speak(lastVisionText)
+                } else {
+                    Toast.makeText(this@MainActivity, "Сначала распознай фотографию", Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
+        root.addView(readResult)
+
+        val copyResult = Button(this).apply {
+            text = "📋 КОПИРОВАТЬ ТЕКСТ"
+            setOnClickListener {
+                if (lastVisionText.isNotBlank()) {
+                    val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                    clipboard.setPrimaryClip(ClipData.newPlainText("ALTER Vision", lastVisionText))
+                    Toast.makeText(this@MainActivity, "Текст скопирован", Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
+        root.addView(copyResult)
+
         setContentView(ScrollView(this).apply {
             addView(root)
         })
@@ -210,6 +256,32 @@ class MainActivity : Activity(), TextToSpeech.OnInitListener {
         refresh()
     }
 
+
+
+    private fun prepareVisionImage(source: Bitmap): Bitmap {
+        val maxSide = maxOf(source.width, source.height)
+        val scale = if (maxSide < 1400) 1400f / maxSide else 1f
+        val width = (source.width * scale).toInt()
+        val height = (source.height * scale).toInt()
+        val resized = if (scale != 1f)
+            Bitmap.createScaledBitmap(source, width, height, true)
+        else source
+        val pixels = IntArray(width * height)
+        resized.getPixels(pixels, 0, width, 0, 0, width, height)
+        for (i in pixels.indices) {
+            val pixel = pixels[i]
+            val r = Color.red(pixel)
+            val g = Color.green(pixel)
+            val b = Color.blue(pixel)
+            val gray = (0.299 * r + 0.587 * g + 0.114 * b).toInt()
+            val enhanced = ((gray - 128) * 1.35 + 128).toInt().coerceIn(0, 255)
+            pixels[i] = Color.rgb(enhanced, enhanced, enhanced)
+        }
+        val output = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+        output.setPixels(pixels, 0, width, 0, 0, width, height)
+        if (resized !== source) resized.recycle()
+        return output
+    }
 
     private fun recognizeImage(uri: Uri) {
         status.text = "ALTER анализирует изображение..."
@@ -239,17 +311,20 @@ class MainActivity : Activity(), TextToSpeech.OnInitListener {
                     if (!api.init(filesDir.absolutePath, "rus+eng")) {
                         throw Exception("Не удалось запустить OCR")
                     }
-                    api.setImage(bitmap)
-                    val result = api.utF8Text.orEmpty().trim()
-
-                    runOnUiThread {
-                        val message = if (result.isBlank())
-                            "Текст на изображении не найден."
-                        else
-                            "На изображении написано: $result"
-
-                        status.text = message.take(1500)
-                        speak(message)
+                    api.setPageSegMode(TessBaseAPI.PageSegMode.PSM_AUTO)
+                    val prepared = prepareVisionImage(bitmap)
+                    try {
+                        api.setImage(prepared)
+                        val result = api.utF8Text.orEmpty().trim()
+                        runOnUiThread {
+                            lastVisionText = result
+                            visionResult.text = if (result.isBlank())
+                                "Текст на изображении не найден."
+                            else result
+                            status.text = "Анализ изображения завершён."
+                        }
+                    } finally {
+                        if (prepared !== bitmap) prepared.recycle()
                     }
                 } finally {
                     api.recycle()
