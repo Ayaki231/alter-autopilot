@@ -31,27 +31,42 @@ jobs:
           gradle-version: '8.2'
 
       - name: Restore signing key
+        id: restore_keystore
         env:
           KEYSTORE_BASE64: ${{ secrets.ALTER_KEYSTORE }}
         run: |
-          printf '%s' "$KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/alter-release.jks"
-          test -s "$RUNNER_TEMP/alter-release.jks"
+          if [ -n "$KEYSTORE_BASE64" ]; then
+            printf '%s' "$KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/alter-release.jks"
+            if [ -s "$RUNNER_TEMP/alter-release.jks" ]; then
+              echo "has_keystore=true" >> "$GITHUB_OUTPUT"
+            else
+              echo "has_keystore=false" >> "$GITHUB_OUTPUT"
+            fi
+          else
+            echo "has_keystore=false" >> "$GITHUB_OUTPUT"
+          fi
 
-      - name: Build signed release APK
+      - name: Build APK
         env:
           ALTER_KEYSTORE_PATH: ${{ runner.temp }}/alter-release.jks
           ALTER_STORE_PASSWORD: ${{ secrets.ALTER_STORE_PASSWORD }}
           ALTER_KEY_PASSWORD: ${{ secrets.ALTER_KEY_PASSWORD }}
           ALTER_KEY_ALIAS: ${{ secrets.ALTER_KEY_ALIAS }}
-        run: gradle --no-daemon :app:assembleRelease
+        run: |
+          if [ "${{ steps.restore_keystore.outputs.has_keystore }}" = "true" ]; then
+            gradle --no-daemon :app:assembleRelease
+          else
+            gradle --no-daemon :app:assembleDebug
+          fi
 
       - name: Verify APK signature
+        if: steps.restore_keystore.outputs.has_keystore == 'true'
         run: |
           "$ANDROID_HOME/build-tools/34.0.0/apksigner" verify --verbose \
             app/build/outputs/apk/release/app-release.apk
 
       - uses: actions/upload-artifact@v4
         with:
-          name: ALTER-Autopilot-signed-apk
-          path: app/build/outputs/apk/release/app-release.apk
+          name: ${{ steps.restore_keystore.outputs.has_keystore == 'true' && 'ALTER-Autopilot-signed-apk' || 'ALTER-Autopilot-debug-apk' }}
+          path: ${{ steps.restore_keystore.outputs.has_keystore == 'true' && 'app/build/outputs/apk/release/app-release.apk' || 'app/build/outputs/apk/debug/app-debug.apk' }}
           if-no-files-found: error
