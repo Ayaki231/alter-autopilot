@@ -2,9 +2,11 @@ package com.alter.autopilot
 
 import android.Manifest
 import android.app.*
+import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.content.pm.ServiceInfo
+import android.media.AudioManager
 import android.os.*
 import android.speech.*
 import java.util.Locale
@@ -21,6 +23,7 @@ class VoiceAutopilotService : Service(), RecognitionListener {
     private val handler = Handler(Looper.getMainLooper())
     private var recognizer: SpeechRecognizer? = null
     private var active = false
+    private var wasMuted = false
 
     override fun onCreate() {
         super.onCreate()
@@ -57,8 +60,8 @@ class VoiceAutopilotService : Service(), RecognitionListener {
 
         val notification = Notification.Builder(this, CHANNEL)
             .setSmallIcon(android.R.drawable.ic_btn_speak_now)
-            .setContentTitle("ALTER — фоновый голос")
-            .setContentText("Микрофон активен. Нажми Остановить для выхода.")
+            .setContentTitle("ALTER — голосовой автопилот")
+            .setContentText("Микрофон активен. Нажми «Остановить» для отключения.")
             .setOngoing(true)
             .addAction(Notification.Action.Builder(null, "Остановить", stop).build())
             .build()
@@ -80,6 +83,21 @@ class VoiceAutopilotService : Service(), RecognitionListener {
         return START_NOT_STICKY
     }
 
+    private fun setSystemSoundMute(mute: Boolean) {
+        try {
+            val am = getSystemService(Context.AUDIO_SERVICE) as? AudioManager ?: return
+            if (mute) {
+                am.adjustStreamVolume(AudioManager.STREAM_NOTIFICATION, AudioManager.ADJUST_MUTE, 0)
+                am.adjustStreamVolume(AudioManager.STREAM_SYSTEM, AudioManager.ADJUST_MUTE, 0)
+                wasMuted = true
+            } else if (wasMuted) {
+                am.adjustStreamVolume(AudioManager.STREAM_NOTIFICATION, AudioManager.ADJUST_UNMUTE, 0)
+                am.adjustStreamVolume(AudioManager.STREAM_SYSTEM, AudioManager.ADJUST_UNMUTE, 0)
+                wasMuted = false
+            }
+        } catch (_: Exception) {}
+    }
+
     private fun startListening() {
         if (!active) return
         if (!SpeechRecognizer.isRecognitionAvailable(this)) {
@@ -98,45 +116,59 @@ class VoiceAutopilotService : Service(), RecognitionListener {
                 )
                 .putExtra(RecognizerIntent.EXTRA_LANGUAGE, "ru-RU")
                 .putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, false)
+
+            setSystemSoundMute(true)
             recognizer?.startListening(request)
         } catch (_: Exception) {
-            handler.postDelayed({ restartListening() }, 1500)
+            setSystemSoundMute(false)
+            handler.postDelayed({ restartListening() }, 3000)
         }
     }
 
     private fun restartListening() {
         if (!active) return
         try { recognizer?.cancel() } catch (_: Exception) {}
-        handler.postDelayed({ startListening() }, 600)
+        handler.postDelayed({ startListening() }, 1000)
     }
 
     override fun onResults(results: Bundle?) {
+        setSystemSoundMute(false)
         val words = results?.getStringArrayList(
             SpeechRecognizer.RESULTS_RECOGNITION
         )?.firstOrNull().orEmpty()
 
         if (words.isNotBlank()) {
-            val normalized = words.lowercase(Locale.ROOT).trim()
-            if (normalized.startsWith("альтер") || normalized.startsWith("alter")) {
-                Thread {
-                    try {
-                        val reply = AlterVoiceCommands.execute(this, words)
-                        if (reply.isNotBlank()) {
-                            AlterSpeaker.speak(this, reply)
-                        }
-                    } catch (_: Exception) {}
-                }.start()
-            }
+            Thread {
+                try {
+                    val reply = AlterVoiceCommands.execute(this, words)
+                    if (reply.isNotBlank()) {
+                        AlterSpeaker.speak(this, reply)
+                    }
+                } catch (_: Exception) {}
+            }.start()
         }
-        handler.postDelayed({ restartListening() }, 1500)
+        handler.postDelayed({ restartListening() }, 2000)
     }
 
     override fun onError(error: Int) {
-        handler.postDelayed({ restartListening() }, 1500)
+        setSystemSoundMute(false)
+        // Если тишина или отсутствие совпадений — не перезапускаем судорожно каждую секунду
+        val delay = when (error) {
+            SpeechRecognizer.ERROR_NO_MATCH,
+            SpeechRecognizer.ERROR_SPEECH_TIMEOUT -> 3500L
+            else -> 2000L
+        }
+        handler.postDelayed({ restartListening() }, delay)
     }
 
-    override fun onReadyForSpeech(params: Bundle?) {}
-    override fun onBeginningOfSpeech() {}
+    override fun onReadyForSpeech(params: Bundle?) {
+        setSystemSoundMute(false)
+    }
+
+    override fun onBeginningOfSpeech() {
+        setSystemSoundMute(false)
+    }
+
     override fun onRmsChanged(rmsdB: Float) {}
     override fun onBufferReceived(buffer: ByteArray?) {}
     override fun onEndOfSpeech() {}
@@ -146,6 +178,7 @@ class VoiceAutopilotService : Service(), RecognitionListener {
     override fun onDestroy() {
         active = false
         isRunning = false
+        setSystemSoundMute(false)
         handler.removeCallbacksAndMessages(null)
         try { recognizer?.destroy() } catch (_: Exception) {}
         recognizer = null

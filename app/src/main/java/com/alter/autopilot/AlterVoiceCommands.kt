@@ -1,14 +1,13 @@
 package com.alter.autopilot
 
 import android.content.Context
-import android.content.Intent
 import java.util.Locale
 
 object AlterVoiceCommands {
     fun execute(context: Context, spoken: String): String {
         val command = spoken.lowercase(Locale.ROOT)
             .trim()
-            .replace(Regex("^(альтер|alter)[,\\s:!]*"), "")
+            .replace(Regex("^(?:эй\\s+)?(?:альтер|alter)[,\\s:!]*"), "")
             .trim()
 
         if (command.isBlank()) return "Слушаю тебя"
@@ -32,65 +31,27 @@ object AlterVoiceCommands {
         }
 
         // 2. Клики и ввод текста
-        val tap = Regex("^(нажми|кликни)\\s+(на\\s+)?(.+)$").find(command)
+        val tap = Regex("^(?:нажми|кликни)\\s+(?:на\\s+)?(.+)$").find(command)
         if (tap != null) {
-            val target = tap.groupValues[3].trim()
+            val target = tap.groupValues[1].trim()
             return if (screen?.tapByText(target) == true) "Нажато: $target"
             else "Не найдена кнопка: $target"
         }
 
-        val type = Regex("^(напиши|введи|впиши)\\s+(.+)$").find(command)
+        val type = Regex("^(?:напиши|введи|впиши)\\s+(.+)$").find(command)
         if (type != null) {
-            val value = type.groupValues[2]
+            val value = type.groupValues[1]
             return if (screen?.typeText(value) == true) "Текст введён"
             else "Сначала выбери поле ввода"
         }
 
-        // 3. Открытие приложений
-        val open = Regex("^открой\\s+(.+)$").find(command)
+        // 3. Открытие приложений (открой телеграм, запусти ютуб, включи ватсап)
+        val open = Regex("^(?:открой|запусти|включи)\\s+(?:мне\\s+)?(?:приложение\\s+)?(.+)$").find(command)
         if (open != null) {
-            val app = open.groupValues[1].trim()
-            val aliases = mapOf(
-                "телеграм" to "telegram",
-                "телеграмм" to "telegram",
-                "телега" to "telegram",
-                "ватсап" to "whatsapp",
-                "вацап" to "whatsapp",
-                "ютуб" to "youtube",
-                "хром" to "chrome",
-                "плей маркет" to "play store",
-                "плеймаркет" to "play store"
-            )
-
-            val name = aliases[app] ?: app
-            val pm = context.packageManager
-
-            val query = Intent(Intent.ACTION_MAIN).apply {
-                addCategory(Intent.CATEGORY_LAUNCHER)
-            }
-
-            val matches = pm.queryIntentActivities(query, 0)
-            val target = matches.firstOrNull {
-                it.loadLabel(pm).toString().equals(name, ignoreCase = true)
-            } ?: matches.firstOrNull {
-                it.loadLabel(pm).toString().contains(name, ignoreCase = true)
-            }
-
-            if (target != null) {
-                val label = target.loadLabel(pm).toString()
-                val intent = Intent(Intent.ACTION_MAIN).apply {
-                    addCategory(Intent.CATEGORY_LAUNCHER)
-                    setClassName(target.activityInfo.packageName, target.activityInfo.name)
-                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                }
-
-                return try {
-                    context.startActivity(intent)
-                    "Открываю $label"
-                } catch (e: Exception) {
-                    "Не удалось открыть $label"
-                }
-            }
+            val app = open.groupValues[1].trim().removeSuffix(" пожалуйста").trim()
+            val ok = AlterActions.openApp(context, app)
+            return if (ok) "Открываю $app"
+            else "Не удалось найти приложение $app. Убедись, что оно установлено."
         }
 
         // 4. Вопрос по экрану
