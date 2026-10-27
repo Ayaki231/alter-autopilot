@@ -73,7 +73,17 @@ object AlterVoiceCommands {
                 context.startActivity(intent)
                 "Открываю $app"
             } catch (e: Exception) {
-                "Не удалось открыть $app: ${e.javaClass.simpleName}"
+                val accessibility = ScreenObserverService.instance
+                if (accessibility != null && accessibility.goHome()) {
+                    android.os.Handler(
+                        android.os.Looper.getMainLooper()
+                    ).postDelayed({
+                        accessibility.tapByText(app)
+                    }, 900)
+                    "Пробую открыть $app с главного экрана"
+                } else {
+                    "Не удалось открыть $app: ${e.javaClass.simpleName}"
+                }
             }
         }
 
