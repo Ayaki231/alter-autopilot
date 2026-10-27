@@ -60,14 +60,20 @@ object AlterVoiceCommands {
                 "настройки" to "com.android.settings"
             )
             val pkg = packages[app] ?: return "Приложение пока неизвестно: $app"
-            val intent = context.packageManager.getLaunchIntentForPackage(pkg)
-                ?: return "Приложение не найдено: $app"
+            val intent = context.packageManager
+                .getLaunchIntentForPackage(pkg)
+                ?: Intent(Intent.ACTION_MAIN).apply {
+                    addCategory(Intent.CATEGORY_LAUNCHER)
+                    setPackage(pkg)
+                }
+
             intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+
             return try {
                 context.startActivity(intent)
                 "Открываю $app"
             } catch (e: Exception) {
-                "Не удалось открыть $app"
+                "Не удалось открыть $app: ${e.javaClass.simpleName}"
             }
         }
 
