@@ -2,28 +2,26 @@ package com.alter.autopilot
 
 import android.app.Activity
 import android.content.ActivityNotFoundException
-import android.content.Intent
-import android.os.Bundle
-import android.provider.Settings
-import android.speech.RecognizerIntent
-import android.speech.tts.TextToSpeech
-import android.text.InputType
-import android.widget.*
-import java.util.Locale
-
-import android.graphics.Bitmap
-import android.graphics.BitmapFactory
-import com.google.mediapipe.tasks.core.BaseOptions
-import com.google.mediapipe.tasks.vision.imageclassifier.ImageClassifier
-import com.google.mediapipe.framework.image.BitmapImageBuilder
-import android.graphics.Color
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
+import android.content.Intent
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import android.graphics.Color
 import android.net.Uri
+import android.os.Bundle
+import android.provider.Settings
+import android.speech.RecognizerIntent
+import android.text.InputType
+import android.view.Gravity
+import android.widget.*
+import com.google.mediapipe.framework.image.BitmapImageBuilder
+import com.google.mediapipe.tasks.core.BaseOptions
+import com.google.mediapipe.tasks.vision.imageclassifier.ImageClassifier
 import com.googlecode.tesseract.android.TessBaseAPI
 import java.io.File
-
+import java.util.Locale
 
 class MainActivity : Activity() {
 
@@ -54,66 +52,201 @@ class MainActivity : Activity() {
         val root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setBackgroundColor(NexusTheme.background)
-            setPadding(32, 32, 32, 24)
+            val pad = NexusTheme.dp(this@MainActivity, 16)
+            setPadding(pad, pad, pad, NexusTheme.dp(this@MainActivity, 32))
         }
 
-        val title = TextView(this).apply {
-            text = "ALTER  |  NEXUS AI"
-            textSize = 24f
+        // ================= HERO СЕКЦИЯ =================
+        val heroLayout = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            gravity = Gravity.CENTER_HORIZONTAL
+            val lp = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply {
+                bottomMargin = NexusTheme.dp(this@MainActivity, 18)
+            }
+            layoutParams = lp
         }
 
-        val info = TextView(this).apply {
-            text = "PERSONAL AI SYSTEM  •  VERSION ${BuildConfig.VERSION_NAME}"
-        }
-
-        val mic = Button(this).apply {
-            text = "🎤 ГОВОРИТЬ С ALTER"
+        // Светящаяся сфера Nexus Core
+        val coreView = NexusCoreView(this).apply {
+            val size = NexusTheme.dp(this@MainActivity, 120)
+            layoutParams = LinearLayout.LayoutParams(size, size).apply {
+                gravity = Gravity.CENTER_HORIZONTAL
+                bottomMargin = NexusTheme.dp(this@MainActivity, 8)
+            }
             setOnClickListener { listen() }
         }
+        heroLayout.addView(coreView)
 
+        val title = TextView(this).apply {
+            text = "ALTER  |  AUTONOMOUS OS"
+            textSize = 20f
+            setTextColor(NexusTheme.white)
+            typeface = android.graphics.Typeface.create("sans-serif-medium", android.graphics.Typeface.BOLD)
+            gravity = Gravity.CENTER_HORIZONTAL
+        }
+        heroLayout.addView(title)
+
+        val info = TextView(this).apply {
+            text = "AGENTIC AI SYSTEM  •  v0.22"
+            textSize = 12f
+            setTextColor(NexusTheme.muted)
+            gravity = Gravity.CENTER_HORIZONTAL
+            val lp = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply {
+                bottomMargin = NexusTheme.dp(this@MainActivity, 12)
+            }
+            layoutParams = lp
+        }
+        heroLayout.addView(info)
+
+        // Статус-бар в виде бейджа
         status = TextView(this).apply {
-            text = "Нажми микрофон и произнеси команду."
-            textSize = 16f
+            text = "● СИСТЕМА ГОТОВА К РАБОТЕ"
+            textSize = 13f
+            setTextColor(NexusTheme.cyan)
+            typeface = android.graphics.Typeface.create("sans-serif-medium", android.graphics.Typeface.BOLD)
+            gravity = Gravity.CENTER_HORIZONTAL
+            background = NexusTheme.rounded(this@MainActivity, NexusTheme.surfaceLight, 12, Color.rgb(30, 60, 100))
+            val p = NexusTheme.dp(this@MainActivity, 12)
+            setPadding(p, NexusTheme.dp(this@MainActivity, 8), p, NexusTheme.dp(this@MainActivity, 8))
+            val lp = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply {
+                bottomMargin = NexusTheme.dp(this@MainActivity, 12)
+            }
+            layoutParams = lp
+        }
+        heroLayout.addView(status)
+
+        val mic = Button(this).apply {
+            text = "🎤 СКАЗАТЬ КОМАНДУ АЛЬТЕРУ"
+            NexusTheme.styleButton(this, isPrimary = true)
+            setOnClickListener { listen() }
+        }
+        heroLayout.addView(mic)
+        root.addView(heroLayout)
+
+        // ================= КАРТОЧКА 1: АВТОНОМНЫЙ АВТОПИЛОТ (AGENTIC OS) =================
+        val agentCard = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            NexusTheme.styleCard(this)
+        }
+        agentCard.addView(NexusTheme.createHeader(this, "АВТОНОМНЫЙ АВТОПИЛОТ", "🚀"))
+
+        val agentDesc = TextView(this).apply {
+            text = "Управляет телефоном как человек: покупка на маркетплейсах, добавление в корзину, почта, будильники, заметки."
+            setTextColor(NexusTheme.muted)
+            textSize = 12f
+            val lp = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply {
+                bottomMargin = NexusTheme.dp(this@MainActivity, 10)
+            }
+            layoutParams = lp
+        }
+        agentCard.addView(agentDesc)
+
+        val goalInput = EditText(this).apply {
+            hint = "Цель: например, найди кофе на Озоне и добавь в корзину"
+            NexusTheme.styleInput(this)
+        }
+        agentCard.addView(goalInput)
+
+        val agentButtonsLayout = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            val lp = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            )
+            layoutParams = lp
         }
 
-        enable = Switch(this).apply {
-            text = "Разрешить автоответы"
-            isChecked = prefs.getBoolean("enabled", false)
+        val runGoalBtn = Button(this).apply {
+            text = "▶ ЗАПУСК"
+            NexusTheme.styleButton(this, isPrimary = true)
+            val lp = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply {
+                rightMargin = NexusTheme.dp(this@MainActivity, 6)
+            }
+            layoutParams = lp
+            setOnClickListener {
+                val goal = goalInput.text.toString().trim()
+                if (goal.isBlank()) {
+                    Toast.makeText(this@MainActivity, "Введите цель для автопилота", Toast.LENGTH_SHORT).show()
+                } else {
+                    status.text = "Автопилот запущен: $goal"
+                    AlterAgentLoop.executeGoal(this@MainActivity, goal) { currentStatus ->
+                        runOnUiThread { status.text = currentStatus }
+                    }
+                }
+            }
         }
 
-        val packages = EditText(this).apply {
-            hint = "Пакеты через запятую"
-            minLines = 2
-            setText(prefs.getString("packages", ""))
+        val stopGoalBtn = Button(this).apply {
+            text = "⏹ СТОП"
+            NexusTheme.styleButton(this, isDanger = true)
+            val lp = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply {
+                leftMargin = NexusTheme.dp(this@MainActivity, 6)
+            }
+            layoutParams = lp
+            setOnClickListener {
+                AlterAgentLoop.stop()
+                status.text = "Автопилот остановлен пользователем."
+                speak("Автопилот остановлен.")
+            }
         }
+        agentButtonsLayout.addView(runGoalBtn)
+        agentButtonsLayout.addView(stopGoalBtn)
+        agentCard.addView(agentButtonsLayout)
+        root.addView(agentCard)
 
-        val reply = EditText(this).apply {
-            hint = "Текст автоответа"
-            setText(prefs.getString(
-                "reply",
-                "Сейчас не могу ответить. Напишу позже."
-            ))
-            inputType = InputType.TYPE_CLASS_TEXT or
-                InputType.TYPE_TEXT_FLAG_MULTI_LINE
+        // ================= КАРТОЧКА 2: ИИ МОЗГ (GEMINI) =================
+        val aiCard = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            NexusTheme.styleCard(this)
         }
+        aiCard.addView(NexusTheme.createHeader(this, "ИИ МОЗГ (GEMINI)", "🧠"))
 
         val aiApiKey = EditText(this).apply {
             hint = "Бесплатный ключ Gemini API"
             setText(prefs.getString("ai_api_key", ""))
+            NexusTheme.styleInput(this)
         }
+        aiCard.addView(aiApiKey)
 
         val aiReplyEnable = Switch(this).apply {
             text = "Генерация автоответов через AI"
+            setTextColor(NexusTheme.white)
             isChecked = prefs.getBoolean("ai_reply_enabled", true)
+            val lp = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply { bottomMargin = NexusTheme.dp(this@MainActivity, 8) }
+            layoutParams = lp
         }
+        aiCard.addView(aiReplyEnable)
 
         val ttsEnable = Switch(this).apply {
             text = "Голосовые ответы вслух (TTS)"
+            setTextColor(NexusTheme.white)
             isChecked = prefs.getBoolean("tts_enabled", true)
+            val lp = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply { bottomMargin = NexusTheme.dp(this@MainActivity, 12) }
+            layoutParams = lp
         }
+        aiCard.addView(ttsEnable)
 
         val testAiButton = Button(this).apply {
             text = "⚡ ТЕСТ AI И ГОЛОСА"
+            NexusTheme.styleButton(this)
             setOnClickListener {
                 status.text = "Тестирую AI и голос..."
                 speak("Привет! Я Альтер. Проверяю подключение к нейросети.")
@@ -126,288 +259,113 @@ class MainActivity : Activity() {
                 }.start()
             }
         }
+        aiCard.addView(testAiButton)
+        root.addView(aiCard)
 
-        val log = TextView(this).apply {
-            textSize = 12f
+        // ================= КАРТОЧКА 3: АВТООТВЕТЧИК УВЕДОМЛЕНИЙ =================
+        val autoReplyCard = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            NexusTheme.styleCard(this)
         }
+        autoReplyCard.addView(NexusTheme.createHeader(this, "АВТООТВЕТЧИК УВЕДОМЛЕНИЙ", "💬"))
 
-        fun refresh() {
-            log.text = "Последние события:\n" +
-                prefs.getString("log", "Пока нет событий")
+        enable = Switch(this).apply {
+            text = "Разрешить автоответы в мессенджерах"
+            setTextColor(NexusTheme.white)
+            isChecked = prefs.getBoolean("enabled", false)
+            val lp = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply { bottomMargin = NexusTheme.dp(this@MainActivity, 8) }
+            layoutParams = lp
         }
+        autoReplyCard.addView(enable)
+
+        val packages = EditText(this).apply {
+            hint = "Пакеты через запятую (org.telegram.messenger)"
+            setText(prefs.getString("packages", "org.telegram.messenger,com.whatsapp"))
+            NexusTheme.styleInput(this)
+        }
+        autoReplyCard.addView(packages)
+
+        val reply = EditText(this).apply {
+            hint = "Запасной шаблон ответа (если AI выключен)"
+            setText(prefs.getString("reply", "Сейчас не могу ответить. Напишу позже."))
+            inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_MULTI_LINE
+            NexusTheme.styleInput(this)
+        }
+        autoReplyCard.addView(reply)
 
         val save = Button(this).apply {
-            text = "Сохранить правила"
+            text = "💾 СОХРАНИТЬ ВСЕ НАСТРОЙКИ"
+            NexusTheme.styleButton(this, isPrimary = true)
             setOnClickListener {
-                val allowed = packages.text.toString()
-                    .split(',')
-                    .map { it.trim() }
-                    .filter { it.isNotBlank() }
+                val allowed = packages.text.toString().split(',').map { it.trim() }.filter { it.isNotBlank() }
+                prefs.edit()
+                    .putBoolean("enabled", enable.isChecked)
+                    .putBoolean("ai_reply_enabled", aiReplyEnable.isChecked)
+                    .putBoolean("tts_enabled", ttsEnable.isChecked)
+                    .putString("ai_api_key", aiApiKey.text.toString().trim())
+                    .putString("packages", allowed.joinToString(","))
+                    .putString("reply", reply.text.toString())
+                    .apply()
 
-                if (enable.isChecked && allowed.isEmpty()) {
-                    Toast.makeText(
-                        this@MainActivity,
-                        "Укажите приложение",
-                        Toast.LENGTH_LONG
-                    ).show()
-                } else if (enable.isChecked &&
-                    reply.text.isBlank()) {
-                    Toast.makeText(
-                        this@MainActivity,
-                        "Укажите текст ответа",
-                        Toast.LENGTH_LONG
-                    ).show()
-                } else {
-                    prefs.edit()
-                        .putBoolean("enabled", enable.isChecked)
-                        .putString("packages", allowed.joinToString(","))
-                        .putString("reply", reply.text.toString())
-                        .putBoolean("ai_reply_enabled", aiReplyEnable.isChecked)
-                        .putBoolean("tts_enabled", ttsEnable.isChecked)
-                        .putString("ai_api_key", aiApiKey.text.toString().trim())
-                        .apply()
-
-                    Toast.makeText(
-                        this@MainActivity,
-                        "Сохранено",
-                        Toast.LENGTH_SHORT
-                    ).show()
-                    refresh()
-                }
+                Toast.makeText(this@MainActivity, "Настройки сохранены!", Toast.LENGTH_SHORT).show()
+                status.text = "Настройки успешно сохранены."
             }
         }
+        autoReplyCard.addView(save)
 
         val access = Button(this).apply {
-            text = "Открыть доступ к уведомлениям"
+            text = "🔔 РАЗРЕШИТЬ ДОСТУП К УВЕДОМЛЕНИЯМ"
+            NexusTheme.styleButton(this)
             setOnClickListener {
-                startActivity(
-                    Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)
-                )
+                startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
             }
         }
+        autoReplyCard.addView(access)
 
-        val refreshButton = Button(this).apply {
-            text = "Обновить журнал"
-            setOnClickListener { refresh() }
-        }
-
-        listOf(
-            title, info, mic, status, enable,
-            packages, reply, aiApiKey, aiReplyEnable, ttsEnable, testAiButton, save, access,
-            refreshButton, log
-        ).forEach { root.addView(it) }
-
-
-        val screenButton = Button(this).apply {
-            text = "ЧТО НА ЭКРАНЕ?"
+        val specAccess = Button(this).apply {
+            text = "♿ СПЕЦ. ВОЗМОЖНОСТИ (ЧТЕНИЕ ЭКРАНА)"
+            NexusTheme.styleButton(this)
             setOnClickListener {
-                val service = ScreenObserverService.instance
-                if (service == null) {
-                    status.text = "Включи ALTER в специальных возможностях."
-                    startActivity(
-                        Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)
-                    )
-                } else {
-                    val content = service.readCurrentScreen()
-                    status.text = "Экран прочитан. ALTER произносит результат."
-                    speak(content)
-                }
+                startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
             }
         }
-        root.addView(screenButton)
+        autoReplyCard.addView(specAccess)
+        root.addView(autoReplyCard)
 
-
-        val visionButton = Button(this).apply {
-            text = "📷 ПРОЧИТАТЬ ФОТОГРАФИЮ"
-            setOnClickListener {
-                val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
-                    type = "image/*"
-                    addCategory(Intent.CATEGORY_OPENABLE)
-                }
-                startActivityForResult(intent, imageRequest)
-            }
+        // ================= КАРТОЧКА 4: ФОНОВАЯ СЛУЖБА И ВИДЖЕТ =================
+        val serviceCard = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            NexusTheme.styleCard(this)
         }
-        root.addView(visionButton)
+        serviceCard.addView(NexusTheme.createHeader(this, "ФОНОВЫЙ ГОЛОС И ПЛАВАЮЩИЙ АЛЬТЕР", "🎙️"))
 
-        val aiVisionButton = Button(this).apply {
-            text = "🧠 ЧТО НА ФОТО? (ЛОКАЛЬНЫЙ AI)"
-            setOnClickListener {
-                val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
-                    type = "image/*"
-                    addCategory(Intent.CATEGORY_OPENABLE)
-                }
-                startActivityForResult(intent, aiImageRequest)
-            }
-        }
-        root.addView(aiVisionButton)
-
-
-        val visionTitle = TextView(this).apply {
-            text = "ALTER VISION — РЕЗУЛЬТАТ"
-            textSize = 18f
-            setPadding(0, 24, 0, 12)
-        }
-        root.addView(visionTitle)
-
-        visionResult = TextView(this).apply {
-            text = "Выбери фотографию для распознавания."
-            textSize = 16f
-            setPadding(16, 16, 16, 16)
-            setBackgroundColor(Color.rgb(235, 240, 245))
-            setTextColor(Color.BLACK)
-        }
-        root.addView(visionResult)
-
-        val readResult = Button(this).apply {
-            text = "🔊 ПРОЧИТАТЬ РЕЗУЛЬТАТ"
-            setOnClickListener {
-                if (lastVisionText.isNotBlank()) {
-                    speak(lastVisionText)
-                } else {
-                    Toast.makeText(this@MainActivity, "Сначала распознай фотографию", Toast.LENGTH_SHORT).show()
-                }
-            }
-        }
-        root.addView(readResult)
-
-        val copyResult = Button(this).apply {
-            text = "📋 КОПИРОВАТЬ ТЕКСТ"
-            setOnClickListener {
-                if (lastVisionText.isNotBlank()) {
-                    val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                    clipboard.setPrimaryClip(ClipData.newPlainText("ALTER Vision", lastVisionText))
-                    Toast.makeText(this@MainActivity, "Текст скопирован", Toast.LENGTH_SHORT).show()
-                }
-            }
-        }
-        root.addView(copyResult)
-
-
-        val floatingButton = Button(this).apply {
-            text = "🟣 ПЛАВАЮЩИЙ ALTER: ВКЛ / ВЫКЛ"
-            setOnClickListener {
-                if (!Settings.canDrawOverlays(this@MainActivity)) {
-                    status.text = "Разреши отображение поверх приложений."
-                    startActivity(
-                        Intent(
-                            Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
-                            android.net.Uri.parse("package:$packageName")
-                        )
-                    )
-                } else if (FloatingAlterService.active) {
-                    stopService(
-                        Intent(
-                            this@MainActivity,
-                            FloatingAlterService::class.java
-                        )
-                    )
-                    status.text = "Плавающий ALTER выключен."
-                } else {
-                    startService(
-                        Intent(
-                            this@MainActivity,
-                            FloatingAlterService::class.java
-                        )
-                    )
-                    status.text = "Запускаю плавающий ALTER."
-                }
-            }
-        }
-        root.addView(floatingButton)
-
-
-
-        // NEXUS_CORE_011
-        val nexusCore = NexusCoreView(this).apply {
-            layoutParams = LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                NexusTheme.dp(this@MainActivity, 220)
-            )
-            setOnClickListener {
-                mic.performClick()
-            }
-        }
-
-        root.addView(nexusCore, 2)
-
-        // NEXUS_UI_011
-        title.apply {
-            textSize = 28f
-            setTextColor(NexusTheme.white)
-            setPadding(0, NexusTheme.dp(this@MainActivity, 12), 0,
-                NexusTheme.dp(this@MainActivity, 8))
-        }
-
-        info.apply {
-            textSize = 12f
-            setTextColor(NexusTheme.cyan)
-            letterSpacing = 0.12f
-            setPadding(0, 0, 0, NexusTheme.dp(this@MainActivity, 20))
-        }
-
-        for (index in 0 until root.childCount) {
-            val child = root.getChildAt(index)
-
-            if (child is Button) {
-                NexusTheme.styleButton(child)
-            } else if (child is EditText) {
-                child.setTextColor(NexusTheme.white)
-                child.setHintTextColor(NexusTheme.muted)
-                child.backgroundTintList =
-                    android.content.res.ColorStateList.valueOf(
-                        NexusTheme.cyan
-                    )
-            } else if (child is TextView &&
-                child !== title &&
-                child !== info) {
-                child.setTextColor(NexusTheme.muted)
-            }
-
-            val params = child.layoutParams
-            if (params is LinearLayout.LayoutParams) {
-                params.bottomMargin = NexusTheme.dp(this, 10)
-                child.layoutParams = params
-            }
-        }
-
-        NexusTheme.styleButton(mic, true)
-        NexusTheme.styleButton(floatingButton, true)
-
-        visionResult.apply {
-            setBackgroundColor(NexusTheme.surface)
-            setTextColor(NexusTheme.white)
-            setPadding(
-                NexusTheme.dp(this@MainActivity, 16),
-                NexusTheme.dp(this@MainActivity, 16),
-                NexusTheme.dp(this@MainActivity, 16),
-                NexusTheme.dp(this@MainActivity, 16)
-            )
-        }
-
-
-        // VOICE_UI_013
-        val voiceControls = LinearLayout(this).apply {
+        val voiceButtonsLayout = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
+            val lp = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            )
+            layoutParams = lp
         }
 
         val startVoiceButton = Button(this).apply {
-            text = "START SERVICE"
+            text = "▶ СТАРТ СЛУЖБЫ"
+            NexusTheme.styleButton(this)
+            val lp = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply {
+                rightMargin = NexusTheme.dp(this@MainActivity, 6)
+            }
+            layoutParams = lp
             setOnClickListener {
                 val permission = android.Manifest.permission.RECORD_AUDIO
-
-                if (android.os.Build.VERSION.SDK_INT >= 23 &&
-                    checkSelfPermission(permission) !=
-                    android.content.pm.PackageManager.PERMISSION_GRANTED
-                ) {
+                if (checkSelfPermission(permission) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
                     requestPermissions(arrayOf(permission), 1313)
                 } else {
                     try {
-                        val serviceIntent = Intent(
-                            this@MainActivity,
-                            VoiceAutopilotService::class.java
-                        )
-                        startForegroundService(serviceIntent)
-                        status.text = "Сервис запущен. Прослушивание пока недоступно."
+                        startForegroundService(Intent(this@MainActivity, VoiceAutopilotService::class.java))
+                        status.text = "Фоновый микрофон активен."
                     } catch (e: Exception) {
                         status.text = "Ошибка запуска: ${e.message}"
                     }
@@ -416,42 +374,146 @@ class MainActivity : Activity() {
         }
 
         val stopVoiceButton = Button(this).apply {
-            text = "STOP SERVICE"
+            text = "⏹ СТОП СЛУЖБЫ"
+            NexusTheme.styleButton(this, isDanger = true)
+            val lp = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply {
+                leftMargin = NexusTheme.dp(this@MainActivity, 6)
+            }
+            layoutParams = lp
             setOnClickListener {
-                stopService(
-                    Intent(
-                        this@MainActivity,
-                        VoiceAutopilotService::class.java
-                    )
-                )
-                status.text = "Сервис остановлен."
+                stopService(Intent(this@MainActivity, VoiceAutopilotService::class.java))
+                status.text = "Фоновый микрофон остановлен."
             }
         }
+        voiceButtonsLayout.addView(startVoiceButton)
+        voiceButtonsLayout.addView(stopVoiceButton)
+        serviceCard.addView(voiceButtonsLayout)
 
-        NexusTheme.styleButton(startVoiceButton, true)
-        NexusTheme.styleButton(stopVoiceButton)
+        val floatingButton = Button(this).apply {
+            text = "🟣 ПЛАВАЮЩИЙ АЛЬТЕР (ВИДЖЕТ): ВКЛ / ВЫКЛ"
+            NexusTheme.styleButton(this)
+            setOnClickListener {
+                if (!Settings.canDrawOverlays(this@MainActivity)) {
+                    startActivity(Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:$packageName")))
+                } else if (FloatingAlterService.active) {
+                    stopService(Intent(this@MainActivity, FloatingAlterService::class.java))
+                    status.text = "Плавающий виджет выключен."
+                } else {
+                    startService(Intent(this@MainActivity, FloatingAlterService::class.java))
+                    status.text = "Плавающий виджет запущен поверх экрана."
+                }
+            }
+        }
+        serviceCard.addView(floatingButton)
+        root.addView(serviceCard)
 
-        voiceControls.addView(
-            startVoiceButton,
-            LinearLayout.LayoutParams(0, -2, 1f)
-        )
-        voiceControls.addView(
-            stopVoiceButton,
-            LinearLayout.LayoutParams(0, -2, 1f)
-        )
+        // ================= КАРТОЧКА 5: ЗРЕНИЕ И ЭКРАН =================
+        val visionCard = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            NexusTheme.styleCard(this)
+        }
+        visionCard.addView(NexusTheme.createHeader(this, "ЗРЕНИЕ И АНАЛИЗ ЭКРАНА", "👁️"))
 
-        root.addView(voiceControls)
+        val screenButton = Button(this).apply {
+            text = "📱 ЧТО СЕЙЧАС НА ЭКРАНЕ?"
+            NexusTheme.styleButton(this)
+            setOnClickListener {
+                val service = ScreenObserverService.instance
+                if (service == null) {
+                    status.text = "Включи ALTER в Специальных возможностях."
+                    startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
+                } else {
+                    val content = service.readCurrentScreen()
+                    status.text = "ALTER анализирует экран..."
+                    Thread {
+                        val reply = AlterAiEngine.ask(this@MainActivity, "Кратко перескажи, что сейчас на экране", content)
+                        runOnUiThread {
+                            status.text = reply
+                            speak(reply)
+                        }
+                    }.start()
+                }
+            }
+        }
+        visionCard.addView(screenButton)
 
+        val visionButton = Button(this).apply {
+            text = "📷 РАСПОЗНАТЬ ТЕКСТ С ФОТО (OCR)"
+            NexusTheme.styleButton(this)
+            setOnClickListener {
+                val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
+                    type = "image/*"
+                    addCategory(Intent.CATEGORY_OPENABLE)
+                }
+                startActivityForResult(intent, imageRequest)
+            }
+        }
+        visionCard.addView(visionButton)
+
+        val aiVisionButton = Button(this).apply {
+            text = "🧠 КЛАССИФИКАЦИЯ ОБЪЕКТОВ НА ФОТО"
+            NexusTheme.styleButton(this)
+            setOnClickListener {
+                val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
+                    type = "image/*"
+                    addCategory(Intent.CATEGORY_OPENABLE)
+                }
+                startActivityForResult(intent, aiImageRequest)
+            }
+        }
+        visionCard.addView(aiVisionButton)
+
+        visionResult = TextView(this).apply {
+            text = "Выбери фото для распознавания."
+            textSize = 13f
+            setPadding(16, 16, 16, 16)
+            setBackgroundColor(NexusTheme.surfaceLight)
+            setTextColor(NexusTheme.white)
+            val lp = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply { bottomMargin = NexusTheme.dp(this@MainActivity, 8) }
+            layoutParams = lp
+        }
+        visionCard.addView(visionResult)
+        root.addView(visionCard)
+
+        // ================= КАРТОЧКА 6: ЖУРНАЛ СОБЫТИЙ =================
+        val logCard = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            NexusTheme.styleCard(this)
+        }
+        logCard.addView(NexusTheme.createHeader(this, "ЖУРНАЛ СОБЫТИЙ", "📋"))
+
+        val log = TextView(this).apply {
+            textSize = 11f
+            setTextColor(NexusTheme.muted)
+            text = prefs.getString("log", "Пока нет событий")
+            val lp = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply { bottomMargin = NexusTheme.dp(this@MainActivity, 8) }
+            layoutParams = lp
+        }
+        logCard.addView(log)
+
+        val refreshButton = Button(this).apply {
+            text = "🔄 ОБНОВИТЬ ЖУРНАЛ"
+            NexusTheme.styleButton(this)
+            setOnClickListener {
+                log.text = prefs.getString("log", "Пока нет событий")
+            }
+        }
+        logCard.addView(refreshButton)
+        root.addView(logCard)
+
+        // Оборачиваем весь экран в стильный ScrollView
         setContentView(ScrollView(this).apply {
             setBackgroundColor(NexusTheme.background)
             isFillViewport = true
             addView(root)
         })
-
-        refresh()
     }
-
-
 
     private fun prepareVisionImage(source: Bitmap): Bitmap {
         val maxSide = maxOf(source.width, source.height)
@@ -469,76 +531,43 @@ class MainActivity : Activity() {
             val g = Color.green(pixel)
             val b = Color.blue(pixel)
             val gray = (0.299 * r + 0.587 * g + 0.114 * b).toInt()
-            val enhanced = ((gray - 128) * 1.35 + 128).toInt().coerceIn(0, 255)
-            pixels[i] = Color.rgb(enhanced, enhanced, enhanced)
+            pixels[i] = if (gray > 140) Color.WHITE else Color.BLACK
         }
-        val output = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
-        output.setPixels(pixels, 0, width, 0, 0, width, height)
+        val binary = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+        binary.setPixels(pixels, 0, width, 0, 0, width, height)
         if (resized !== source) resized.recycle()
-        return output
+        return binary
     }
-
 
     private fun classifyPhoto(uri: Uri) {
         status.text = "AI анализирует фотографию..."
-
         Thread {
             try {
-                val options = BitmapFactory.Options().apply {
-                    inJustDecodeBounds = true
-                }
-                contentResolver.openInputStream(uri)?.use {
-                    BitmapFactory.decodeStream(it, null, options)
-                }
-
+                val options = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+                contentResolver.openInputStream(uri)?.use { BitmapFactory.decodeStream(it, null, options) }
                 var sample = 1
-                while (maxOf(options.outWidth / sample,
-                        options.outHeight / sample) > 1600) {
-                    sample *= 2
-                }
-
-                val decodeOptions = BitmapFactory.Options().apply {
-                    inSampleSize = sample
-                }
+                while (maxOf(options.outWidth / sample, options.outHeight / sample) > 1600) { sample *= 2 }
+                val decodeOptions = BitmapFactory.Options().apply { inSampleSize = sample }
                 val bitmap = contentResolver.openInputStream(uri)?.use {
                     BitmapFactory.decodeStream(it, null, decodeOptions)
                 } ?: throw Exception("Не удалось открыть фото")
 
                 try {
-                    val base = BaseOptions.builder()
-                        .setModelAssetPath("efficientnet_lite0.tflite")
-                        .build()
-
-                    val config = ImageClassifier.ImageClassifierOptions.builder()
-                        .setBaseOptions(base)
-                        .setMaxResults(3)
-                        .build()
-
+                    val base = BaseOptions.builder().setModelAssetPath("efficientnet_lite0.tflite").build()
+                    val config = ImageClassifier.ImageClassifierOptions.builder().setBaseOptions(base).setMaxResults(3).build()
                     ImageClassifier.createFromOptions(this, config).use { classifier ->
                         val image = BitmapImageBuilder(bitmap).build()
                         val result = classifier.classify(image)
-                        val categories = result.classificationResult()
-                            .classifications()
-                            .flatMap { it.categories() }
-                            .sortedByDescending { it.score() }
-                            .take(3)
-
-                        val description = if (categories.isEmpty()) {
-                            "AI не смог определить объект."
-                        } else {
-                            categories.joinToString("\n") {
-                                val name = it.displayName().ifBlank {
-                                    it.categoryName()
-                                }
-                                val percent = (it.score() * 100).toInt()
-                                "$name — $percent%"
-                            }
+                        val categories = result.classificationResult().classifications().flatMap { it.categories() }.sortedByDescending { it.score() }.take(3)
+                        val description = if (categories.isEmpty()) "AI не смог определить объект."
+                        else categories.joinToString("\n") {
+                            val name = it.displayName().ifBlank { it.categoryName() }
+                            val percent = (it.score() * 100).toInt()
+                            "$name — $percent%"
                         }
-
                         runOnUiThread {
                             lastVisionText = description
-                            visionResult.text =
-                                "AI предполагает:\n$description"
+                            visionResult.text = "AI предполагает:\n$description"
                             status.text = "AI-анализ завершён."
                         }
                     }
@@ -546,41 +575,30 @@ class MainActivity : Activity() {
                     bitmap.recycle()
                 }
             } catch (e: Exception) {
-                runOnUiThread {
-                    status.text = "AI Vision: ${e.message}"
-                }
+                runOnUiThread { status.text = "AI Vision: ${e.message}" }
             }
         }.start()
     }
 
     private fun recognizeImage(uri: Uri) {
         status.text = "ALTER анализирует изображение..."
-
         Thread {
             try {
-                val bitmap = contentResolver.openInputStream(uri)?.use {
-                    BitmapFactory.decodeStream(it)
-                } ?: throw Exception("Не удалось открыть изображение")
-
+                val bitmap = contentResolver.openInputStream(uri)?.use { BitmapFactory.decodeStream(it) }
+                    ?: throw Exception("Не удалось открыть изображение")
                 val tessData = File(filesDir, "tessdata")
                 if (!tessData.exists()) tessData.mkdirs()
-
                 for (language in listOf("rus", "eng")) {
                     val target = File(tessData, "$language.traineddata")
                     if (!target.exists() || target.length() == 0L) {
                         assets.open("tessdata/$language.traineddata").use { input ->
-                            target.outputStream().use { output ->
-                                input.copyTo(output)
-                            }
+                            target.outputStream().use { output -> input.copyTo(output) }
                         }
                     }
                 }
-
                 val api = TessBaseAPI()
                 try {
-                    if (!api.init(filesDir.absolutePath, "rus+eng")) {
-                        throw Exception("Не удалось запустить OCR")
-                    }
+                    if (!api.init(filesDir.absolutePath, "rus+eng")) throw Exception("Не удалось запустить OCR")
                     api.setPageSegMode(TessBaseAPI.PageSegMode.PSM_AUTO)
                     val prepared = prepareVisionImage(bitmap)
                     try {
@@ -588,9 +606,7 @@ class MainActivity : Activity() {
                         val result = api.utF8Text.orEmpty().trim()
                         runOnUiThread {
                             lastVisionText = result
-                            visionResult.text = if (result.isBlank())
-                                "Текст на изображении не найден."
-                            else result
+                            visionResult.text = if (result.isBlank()) "Текст на изображении не найден." else result
                             status.text = "Анализ изображения завершён."
                         }
                     } finally {
@@ -601,31 +617,17 @@ class MainActivity : Activity() {
                     bitmap.recycle()
                 }
             } catch (e: Exception) {
-                runOnUiThread {
-                    status.text = "Vision: ${e.message}"
-                }
+                runOnUiThread { status.text = "Vision: ${e.message}" }
             }
         }.start()
     }
 
     private fun listen() {
-        val intent = Intent(
-            RecognizerIntent.ACTION_RECOGNIZE_SPEECH
-        ).apply {
-            putExtra(
-                RecognizerIntent.EXTRA_LANGUAGE_MODEL,
-                RecognizerIntent.LANGUAGE_MODEL_FREE_FORM
-            )
-            putExtra(
-                RecognizerIntent.EXTRA_LANGUAGE,
-                "ru-RU"
-            )
-            putExtra(
-                RecognizerIntent.EXTRA_PROMPT,
-                "Скажи команду для ALTER"
-            )
+        val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
+            putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
+            putExtra(RecognizerIntent.EXTRA_LANGUAGE, "ru-RU")
+            putExtra(RecognizerIntent.EXTRA_PROMPT, "Скажи команду или цель для ALTER")
         }
-
         try {
             startActivityForResult(intent, voiceRequest)
         } catch (e: ActivityNotFoundException) {
@@ -634,274 +636,32 @@ class MainActivity : Activity() {
     }
 
     @Deprecated("Legacy speech result callback")
-    override fun onActivityResult(
-        requestCode: Int,
-        resultCode: Int,
-        data: Intent?
-    ) {
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
-
         if (requestCode == aiImageRequest && resultCode == RESULT_OK) {
             data?.data?.let { classifyPhoto(it) }
             return
         }
-
         if (requestCode == imageRequest && resultCode == RESULT_OK) {
             data?.data?.let { recognizeImage(it) }
             return
         }
+        if (requestCode != voiceRequest || resultCode != RESULT_OK) return
 
-        if (requestCode != voiceRequest ||
-            resultCode != RESULT_OK) return
-
-        val words = data?.getStringArrayListExtra(
-            RecognizerIntent.EXTRA_RESULTS
-        )
-
-        val command = words?.firstOrNull()
-            ?.lowercase(Locale.ROOT)
-            ?.trim()
-            .orEmpty()
-
+        val words = data?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)
+        val command = words?.firstOrNull()?.trim().orEmpty()
         if (command.isEmpty()) {
             status.text = "Не удалось распознать команду."
             return
         }
 
         status.text = "Услышал: $command"
-        executeCommand(command)
-    }
-
-    private fun executeCommand(command: String) {
-
-        // VOICE_SCREEN_ROUTER_014
-        val screenCommand = command
-            .lowercase(Locale.ROOT)
-            .trim()
-            .replace(
-                Regex("^(альтер|alter)[,\\s:!]+"),
-                ""
-            )
-            .trim()
-
-        val screenAction = when {
-            screenCommand in listOf(
-                "назад",
-                "вернись назад",
-                "шаг назад"
-            ) -> "BACK"
-
-            screenCommand in listOf(
-                "домой",
-                "на главный экран",
-                "главный экран"
-            ) -> "HOME"
-
-            screenCommand.startsWith("нажми на ") ||
-            screenCommand.startsWith("нажми ") ||
-            screenCommand.startsWith("кликни на ") ||
-            screenCommand.startsWith("кликни ") -> "TAP"
-
-            else -> null
-        }
-
-        if (screenAction != null) {
-            val service = ScreenObserverService.instance
-
-            if (service == null) {
-                status.text = "Включи службу ALTER в специальных возможностях."
-                speak("Для управления экраном включи специальные возможности.")
-                startActivity(
-                    Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)
-                )
-                return
+        Thread {
+            val reply = AlterVoiceCommands.execute(this, command)
+            runOnUiThread {
+                status.text = reply
+                speak(reply)
             }
-
-            val success = when (screenAction) {
-                "BACK" -> service.goBack()
-                "HOME" -> service.goHome()
-                "TAP" -> {
-                    val target = screenCommand
-                        .replace(
-                            Regex("^(нажми|кликни)\\s+(на\\s+)?"),
-                            ""
-                        )
-                        .trim()
-
-                    target.isNotBlank() && service.tapByText(target)
-                }
-                else -> false
-            }
-
-            status.text = if (success) {
-                "Команда выполнена: $screenCommand"
-            } else {
-                "Не удалось выполнить: $screenCommand"
-            }
-
-            // Не озвучиваем результат после нажатия:
-            // действие могло открыть другое приложение.
-            return
-        }
-
-
-
-        // SMART_INTENT_ROUTER_012
-        val intentResult = if (
-            command.contains("автоответ")
-        ) {
-            AlterIntentParser.Result(
-                AlterIntentParser.Type.UNKNOWN
-            )
-        } else {
-            AlterIntentParser.parse(command)
-        }
-
-        when (intentResult.type) {
-            AlterIntentParser.Type.READ_SCREEN -> {
-                val service = ScreenObserverService.instance
-                if (service == null) {
-                    status.text = "Включи доступ к специальным возможностям."
-                    startActivity(
-                        Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)
-                    )
-                } else {
-                    val content = service.readCurrentScreen()
-                    status.text = "ALTER читает экран."
-                    speak(content)
-                }
-                return
-            }
-
-            AlterIntentParser.Type.SET_ALARM -> {
-                val ok = AlterActions.setAlarm(
-                    this,
-                    intentResult.hour,
-                    intentResult.minute
-                )
-                status.text = if (ok) {
-                    "Открываю установку будильника."
-                } else {
-                    "Не удалось открыть будильник."
-                }
-                if (ok) speak("Открываю будильник.")
-                return
-            }
-
-            AlterIntentParser.Type.SAVE_NOTE -> {
-                val ok = AlterActions.saveNote(
-                    this,
-                    intentResult.argument
-                )
-                status.text = if (ok) {
-                    "Заметка сохранена."
-                } else {
-                    "Не удалось сохранить заметку."
-                }
-                if (ok) speak("Заметка сохранена.")
-                return
-            }
-
-            AlterIntentParser.Type.INSTALL_APP -> {
-                val ok = AlterActions.findAppInStore(
-                    this,
-                    intentResult.argument
-                )
-                status.text = if (ok) {
-                    "Ищу приложение в Google Play."
-                } else {
-                    "Не удалось открыть магазин приложений."
-                }
-                if (ok) speak("Открываю магазин приложений.")
-                return
-            }
-
-            AlterIntentParser.Type.OPEN_APP -> {
-                val target = intentResult.argument
-                if (target == "настройки") {
-                    startActivity(Intent(Settings.ACTION_SETTINGS))
-                    return
-                }
-
-                val ok = AlterActions.openApp(this, target)
-                if (ok) {
-                    status.text = "Открываю $target"
-                    speak("Открываю $target")
-                    return
-                }
-
-                // Неизвестное приложение: старый обработчик
-                // получает возможность выполнить команду.
-            }
-
-            AlterIntentParser.Type.UNKNOWN -> {
-                // Оставляем существующие команды без изменений.
-            }
-        }
-
-
-        when {
-            "что на экране" in command ||
-            "прочитай экран" in command ||
-            "прочти экран" in command -> {
-                val service = ScreenObserverService.instance
-                if (service == null) {
-                    val message = "Включи доступ к специальным возможностям."
-                    status.text = message
-                    speak(message)
-                    startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
-                } else {
-                    val content = service.readCurrentScreen()
-                    status.text = "ALTER читает экран."
-                    speak(content)
-                }
-            }
-            "открой телеграм" in command ||
-            "открыть телеграм" in command ||
-            "открой telegram" in command -> {
-                try {
-                    val intent = Intent(
-                        Intent.ACTION_VIEW,
-                        android.net.Uri.parse("tg://")
-                    ).apply {
-                        setPackage("org.telegram.messenger")
-                    }
-                    startActivity(intent)
-                    speak("Открываю Телеграм.")
-                } catch (e: Exception) {
-                    status.text = "Не удалось открыть Telegram."
-                }
-            }
-
-            "открой настройки" in command ||
-            "открыть настройки" in command -> {
-                startActivity(Intent(Settings.ACTION_SETTINGS))
-            }
-
-            "выключи автоответ" in command ||
-            "отключи автоответ" in command -> {
-                prefs.edit().putBoolean("enabled", false).apply()
-                enable.isChecked = false
-                status.text = "Автоответы выключены."
-                speak("Автоответы выключены.")
-            }
-
-            "включи автоответ" in command -> {
-                val packages = prefs.getString("packages", "").orEmpty()
-                val reply = prefs.getString("reply", "").orEmpty()
-                if (packages.isBlank() || reply.isBlank()) {
-                    status.text = "Сначала сохрани правила автоответов."
-                } else {
-                    prefs.edit().putBoolean("enabled", true).apply()
-                    enable.isChecked = true
-                    status.text = "Автоответы включены."
-                    speak("Автоответы включены.")
-                }
-            }
-
-            else -> {
-                status.text = "Команда пока не поддерживается: $command"
-            }
-        }
+        }.start()
     }
 }

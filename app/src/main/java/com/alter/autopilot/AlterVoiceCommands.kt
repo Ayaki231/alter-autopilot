@@ -2,7 +2,6 @@ package com.alter.autopilot
 
 import android.content.Context
 import android.content.Intent
-import android.net.Uri
 import android.provider.Settings
 import java.util.Locale
 
@@ -40,7 +39,6 @@ object AlterVoiceCommands {
             val contact = sendMatch.groupValues[1].trim()
             val messageText = sendMatch.groupValues[2].trim()
 
-            // Запуск Telegram с предварительно заполненным текстом
             val sendIntent = Intent(Intent.ACTION_SEND).apply {
                 type = "text/plain"
                 `package` = "org.telegram.messenger"
@@ -62,7 +60,23 @@ object AlterVoiceCommands {
             }
         }
 
-        // 3. Клики и ввод текста
+        // 3. Сложные автономные цели (покупки, корзина, почта, будильник, поиск)
+        val isAgentGoal = command.contains("корзин") ||
+                command.contains("купи") ||
+                command.contains("закажи") ||
+                command.contains("почт") ||
+                command.contains("блокнот") ||
+                command.contains("будильник") ||
+                command.contains("отмет") ||
+                command.startsWith("найди ") ||
+                command.startsWith("поищи ")
+
+        if (isAgentGoal) {
+            AlterAgentLoop.executeGoal(context, command)
+            return "Запускаю автопилот: $command"
+        }
+
+        // 4. Клики и ввод текста
         val tap = Regex("^(?:нажми|кликни)\\s+(?:на\\s+)?(.+)$").find(command)
         if (tap != null) {
             val target = tap.groupValues[1].trim()
@@ -77,7 +91,7 @@ object AlterVoiceCommands {
             else "Сначала выбери поле ввода"
         }
 
-        // 4. Открытие приложений (открой телеграм, запусти ютуб, включи ватсап)
+        // 5. Открытие приложений (открой телеграм, запусти ютуб, включи ватсап)
         val open = Regex("^(?:открой|запусти|включи)\\s+(?:мне\\s+)?(?:приложение\\s+)?(.+)$").find(command)
         if (open != null) {
             val app = open.groupValues[1].trim().removeSuffix(" пожалуйста").trim()
@@ -86,7 +100,7 @@ object AlterVoiceCommands {
             else "Не удалось найти приложение $app. Убедись, что оно установлено."
         }
 
-        // 5. Вопрос по экрану (гибкое распознавание: "что на экране", "что у меня на экране", "перескажи экран")
+        // 6. Вопрос по экрану (гибкое распознавание)
         val isScreenQuery = command.contains("на экране") ||
                 command.contains("прочитай экран") ||
                 command.contains("перескажи экран") ||
@@ -111,7 +125,7 @@ object AlterVoiceCommands {
             return AlterAiEngine.ask(context, "Кратко перескажи, что сейчас находится на экране пользователя", screenText)
         }
 
-        // 6. Любой общий вопрос через AI
+        // 7. Любой общий вопрос через AI
         return AlterAiEngine.ask(context, command)
     }
 }

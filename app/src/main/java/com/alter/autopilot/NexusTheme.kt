@@ -2,19 +2,23 @@ package com.alter.autopilot
 
 import android.content.Context
 import android.graphics.Color
+import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
 import android.view.View
 import android.widget.Button
+import android.widget.EditText
+import android.widget.LinearLayout
 import android.widget.TextView
 
 object NexusTheme {
-    val background = Color.rgb(9, 14, 28)
-    val surface = Color.rgb(18, 31, 57)
-    val surfaceLight = Color.rgb(25, 40, 68)
-    val cyan = Color.rgb(100, 221, 255)
-    val purple = Color.rgb(145, 100, 255)
+    val background = Color.rgb(9, 14, 28)       // Глубокий космический киберпанк
+    val surface = Color.rgb(16, 26, 48)         // Карточка с легким свечением
+    val surfaceLight = Color.rgb(24, 38, 66)    // Поля ввода
+    val cyan = Color.rgb(0, 229, 255)           // Неоновый акцент
+    val purple = Color.rgb(168, 85, 247)        // Фиолетовый градиент
     val white = Color.WHITE
-    val muted = Color.rgb(150, 170, 205)
+    val muted = Color.rgb(148, 163, 184)
+    val success = Color.rgb(34, 197, 94)
 
     fun dp(context: Context, value: Int): Int =
         (value * context.resources.displayMetrics.density).toInt()
@@ -23,49 +27,91 @@ object NexusTheme {
         context: Context,
         color: Int,
         radius: Int = 18,
-        stroke: Int? = null
+        strokeColor: Int? = null,
+        strokeWidth: Int = 1
     ): GradientDrawable =
         GradientDrawable().apply {
             shape = GradientDrawable.RECTANGLE
             setColor(color)
             cornerRadius = dp(context, radius).toFloat()
-            if (stroke != null) {
-                setStroke(dp(context, 1), stroke)
+            if (strokeColor != null) {
+                setStroke(dp(context, strokeWidth), strokeColor)
             }
         }
 
-    fun styleButton(button: Button, primary: Boolean = false) {
-        val context = button.context
+    fun styleCard(view: View) {
+        val ctx = view.context
+        view.background = rounded(ctx, surface, 20, Color.rgb(35, 55, 95), 1)
+        if (view is LinearLayout) {
+            view.setPadding(dp(ctx, 18), dp(ctx, 18), dp(ctx, 18), dp(ctx, 18))
+            val lp = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply {
+                bottomMargin = dp(ctx, 16)
+            }
+            view.layoutParams = lp
+        }
+    }
+
+    fun styleButton(button: Button, isPrimary: Boolean = false, isDanger: Boolean = false) {
+        val ctx = button.context
         button.isAllCaps = false
         button.textSize = 14f
-        button.setTextColor(if (primary) background else white)
-        button.background = rounded(
-            context,
-            if (primary) cyan else surfaceLight,
-            16,
-            if (primary) null else Color.rgb(45, 67, 105)
+        button.typeface = Typeface.create("sans-serif-medium", Typeface.BOLD)
+
+        val bgColor = when {
+            isDanger -> Color.rgb(225, 29, 72)
+            isPrimary -> cyan
+            else -> surfaceLight
+        }
+        val textColor = when {
+            isPrimary -> Color.rgb(9, 14, 28)
+            else -> white
+        }
+        button.setTextColor(textColor)
+        button.background = rounded(ctx, bgColor, 14, if (isPrimary || isDanger) null else Color.rgb(45, 75, 120))
+        button.setPadding(dp(ctx, 16), dp(ctx, 14), dp(ctx, 16), dp(ctx, 14))
+        button.minHeight = dp(ctx, 50)
+
+        val lp = (button.layoutParams as? LinearLayout.LayoutParams) ?: LinearLayout.LayoutParams(
+            LinearLayout.LayoutParams.MATCH_PARENT,
+            LinearLayout.LayoutParams.WRAP_CONTENT
         )
-        button.setPadding(
-            dp(context, 16),
-            dp(context, 14),
-            dp(context, 16),
-            dp(context, 14)
-        )
-        button.minHeight = dp(context, 52)
+        lp.bottomMargin = dp(ctx, 10)
+        button.layoutParams = lp
     }
 
-    fun styleText(view: TextView, heading: Boolean = false) {
-        view.setTextColor(if (heading) white else muted)
-        if (heading) view.textSize = 22f
+    fun styleInput(editText: EditText) {
+        val ctx = editText.context
+        editText.setTextColor(white)
+        editText.setHintTextColor(muted)
+        editText.textSize = 14f
+        editText.background = rounded(ctx, surfaceLight, 14, Color.rgb(40, 65, 105))
+        editText.setPadding(dp(ctx, 16), dp(ctx, 14), dp(ctx, 16), dp(ctx, 14))
+        val lp = LinearLayout.LayoutParams(
+            LinearLayout.LayoutParams.MATCH_PARENT,
+            LinearLayout.LayoutParams.WRAP_CONTENT
+        ).apply {
+            bottomMargin = dp(ctx, 12)
+        }
+        editText.layoutParams = lp
     }
 
-    fun styleCard(view: View) {
-        view.background = rounded(
-            view.context,
-            surface,
-            22,
-            Color.rgb(40, 64, 104)
-        )
-        view.elevation = dp(view.context, 3).toFloat()
+    fun createHeader(context: Context, text: String, icon: String = ""): TextView {
+        return TextView(context).apply {
+            val fullText = if (icon.isNotBlank()) "$icon  $text" else text
+            this.text = fullText
+            setTextColor(cyan)
+            textSize = 15f
+            typeface = Typeface.create("sans-serif-medium", Typeface.BOLD)
+            val lp = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply {
+                bottomMargin = dp(context, 12)
+            }
+            layoutParams = lp
+        }
     }
 }
