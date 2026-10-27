@@ -301,6 +301,20 @@ class MainActivity : Activity(), TextToSpeech.OnInitListener {
         root.addView(floatingButton)
 
 
+
+        // NEXUS_CORE_011
+        val nexusCore = NexusCoreView(this).apply {
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                NexusTheme.dp(this@MainActivity, 220)
+            )
+            setOnClickListener {
+                mic.performClick()
+            }
+        }
+
+        root.addView(nexusCore, 2)
+
         // NEXUS_UI_011
         title.apply {
             textSize = 28f
@@ -321,6 +335,13 @@ class MainActivity : Activity(), TextToSpeech.OnInitListener {
 
             if (child is Button) {
                 NexusTheme.styleButton(child)
+            } else if (child is EditText) {
+                child.setTextColor(NexusTheme.white)
+                child.setHintTextColor(NexusTheme.muted)
+                child.backgroundTintList =
+                    android.content.res.ColorStateList.valueOf(
+                        NexusTheme.cyan
+                    )
             } else if (child is TextView &&
                 child !== title &&
                 child !== info) {
