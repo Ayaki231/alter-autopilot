@@ -12,7 +12,7 @@ android {
         }
     }
  namespace = "com.alter.autopilot"; compileSdk = 34
-    defaultConfig { applicationId = "com.alter.autopilot"; minSdk = 26; targetSdk = 34; versionCode = 8; versionName = "0.8" }
+    defaultConfig { applicationId = "com.alter.autopilot"; minSdk = 26; targetSdk = 34; versionCode = 9; versionName = "0.9" }
 
     buildTypes {
         getByName("release") {
@@ -26,5 +26,6 @@ android {
 
 
 dependencies {
+    implementation("com.google.mediapipe:tasks-vision:0.10.32")
     implementation("cz.adaptech.tesseract4android:tesseract4android:4.7.0")
 }

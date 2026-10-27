@@ -13,6 +13,9 @@ import java.util.Locale
 
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import com.google.mediapipe.tasks.core.BaseOptions
+import com.google.mediapipe.tasks.vision.imageclassifier.ImageClassifier
+import com.google.mediapipe.framework.image.BitmapImageBuilder
 import android.graphics.Color
 import android.content.ClipData
 import android.content.ClipboardManager
@@ -53,6 +56,7 @@ class MainActivity : Activity(), TextToSpeech.OnInitListener {
 
     private val voiceRequest = 1001
     private val imageRequest = 1002
+    private val aiImageRequest = 1003
     private lateinit var enable: Switch
     private lateinit var status: TextView
     private lateinit var visionResult: TextView
@@ -71,7 +75,7 @@ class MainActivity : Activity(), TextToSpeech.OnInitListener {
         }
 
         val title = TextView(this).apply {
-            text = "ALTER Autopilot 0.8 Vision Pro"
+            text = "ALTER Autopilot 0.9 Local AI Vision"
             textSize = 24f
         }
 
@@ -209,6 +213,19 @@ class MainActivity : Activity(), TextToSpeech.OnInitListener {
         }
         root.addView(visionButton)
 
+        val aiVisionButton = Button(this).apply {
+            text = "🧠 ЧТО НА ФОТО? (ЛОКАЛЬНЫЙ AI)"
+            setOnClickListener {
+                val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
+                    type = "image/*"
+                    addCategory(Intent.CATEGORY_OPENABLE)
+                }
+                startActivityForResult(intent, aiImageRequest)
+            }
+        }
+        root.addView(aiVisionButton)
+
+
         val visionTitle = TextView(this).apply {
             text = "ALTER VISION — РЕЗУЛЬТАТ"
             textSize = 18f
@@ -281,6 +298,81 @@ class MainActivity : Activity(), TextToSpeech.OnInitListener {
         output.setPixels(pixels, 0, width, 0, 0, width, height)
         if (resized !== source) resized.recycle()
         return output
+    }
+
+
+    private fun classifyPhoto(uri: Uri) {
+        status.text = "AI анализирует фотографию..."
+
+        Thread {
+            try {
+                val options = BitmapFactory.Options().apply {
+                    inJustDecodeBounds = true
+                }
+                contentResolver.openInputStream(uri)?.use {
+                    BitmapFactory.decodeStream(it, null, options)
+                }
+
+                var sample = 1
+                while (maxOf(options.outWidth / sample,
+                        options.outHeight / sample) > 1600) {
+                    sample *= 2
+                }
+
+                val decodeOptions = BitmapFactory.Options().apply {
+                    inSampleSize = sample
+                }
+                val bitmap = contentResolver.openInputStream(uri)?.use {
+                    BitmapFactory.decodeStream(it, null, decodeOptions)
+                } ?: throw Exception("Не удалось открыть фото")
+
+                try {
+                    val base = BaseOptions.builder()
+                        .setModelAssetPath("efficientnet_lite0.tflite")
+                        .build()
+
+                    val config = ImageClassifier.ImageClassifierOptions.builder()
+                        .setBaseOptions(base)
+                        .setMaxResults(3)
+                        .build()
+
+                    ImageClassifier.createFromOptions(this, config).use { classifier ->
+                        val image = BitmapImageBuilder(bitmap).build()
+                        val result = classifier.classify(image)
+                        val categories = result.classificationResult()
+                            .classifications()
+                            .flatMap { it.categories() }
+                            .sortedByDescending { it.score() }
+                            .take(3)
+
+                        val description = if (categories.isEmpty()) {
+                            "AI не смог определить объект."
+                        } else {
+                            categories.joinToString("\n") {
+                                val name = it.displayName().orElse("").ifBlank {
+                                    it.categoryName()
+                                }
+                                val percent = (it.score() * 100).toInt()
+                                "$name — $percent%"
+                            }
+                        }
+
+                        runOnUiThread {
+                            lastVisionText = description
+                            visionResult.text =
+                                "AI предполагает:\n$description"
+                            status.text = "AI-анализ завершён."
+                        }
+                    }
+                } finally {
+                    bitmap.recycle()
+                }
+            } catch (e: Exception) {
+                runOnUiThread {
+                    status.text = "AI Vision: ${e.message}"
+                }
+            }
+        }.start()
     }
 
     private fun recognizeImage(uri: Uri) {
@@ -370,6 +462,11 @@ class MainActivity : Activity(), TextToSpeech.OnInitListener {
         data: Intent?
     ) {
         super.onActivityResult(requestCode, resultCode, data)
+
+        if (requestCode == aiImageRequest && resultCode == RESULT_OK) {
+            data?.data?.let { classifyPhoto(it) }
+            return
+        }
 
         if (requestCode == imageRequest && resultCode == RESULT_OK) {
             data?.data?.let { recognizeImage(it) }
