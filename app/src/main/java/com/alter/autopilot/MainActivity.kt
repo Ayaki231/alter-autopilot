@@ -369,6 +369,64 @@ class MainActivity : Activity(), TextToSpeech.OnInitListener {
             )
         }
 
+
+        // VOICE_UI_013
+        val voiceControls = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+        }
+
+        val startVoiceButton = Button(this).apply {
+            text = "VOICE ON"
+            setOnClickListener {
+                val permission = android.Manifest.permission.RECORD_AUDIO
+
+                if (android.os.Build.VERSION.SDK_INT >= 23 &&
+                    checkSelfPermission(permission) !=
+                    android.content.pm.PackageManager.PERMISSION_GRANTED
+                ) {
+                    requestPermissions(arrayOf(permission), 1313)
+                } else {
+                    try {
+                        val serviceIntent = Intent(
+                            this@MainActivity,
+                            VoiceAutopilotService::class.java
+                        )
+                        startForegroundService(serviceIntent)
+                        status.text = "Голосовой сервис запущен."
+                    } catch (e: Exception) {
+                        status.text = "Ошибка запуска: ${e.message}"
+                    }
+                }
+            }
+        }
+
+        val stopVoiceButton = Button(this).apply {
+            text = "VOICE OFF"
+            setOnClickListener {
+                stopService(
+                    Intent(
+                        this@MainActivity,
+                        VoiceAutopilotService::class.java
+                    )
+                )
+                status.text = "Голосовой сервис остановлен."
+            }
+        }
+
+        NexusTheme.styleButton(startVoiceButton, true)
+        NexusTheme.styleButton(stopVoiceButton)
+
+        voiceControls.addView(
+            startVoiceButton,
+            LinearLayout.LayoutParams(0, -2, 1f)
+        )
+        voiceControls.addView(
+            stopVoiceButton,
+            LinearLayout.LayoutParams(0, -2, 1f)
+        )
+
+        root.addView(voiceControls)
+
         setContentView(ScrollView(this).apply {
             setBackgroundColor(NexusTheme.background)
             isFillViewport = true
