@@ -6,11 +6,40 @@ import android.content.Intent
 import android.os.Bundle
 import android.provider.Settings
 import android.speech.RecognizerIntent
+import android.speech.tts.TextToSpeech
 import android.text.InputType
 import android.widget.*
 import java.util.Locale
 
-class MainActivity : Activity() {
+class MainActivity : Activity(), TextToSpeech.OnInitListener {
+    private var tts: TextToSpeech? = null
+    private var ttsReady = false
+
+    override fun onInit(statusCode: Int) {
+        if (statusCode == TextToSpeech.SUCCESS) {
+            val result = tts?.setLanguage(Locale("ru", "RU"))
+            ttsReady = result != TextToSpeech.LANG_MISSING_DATA &&
+                result != TextToSpeech.LANG_NOT_SUPPORTED
+        }
+    }
+
+    private fun speak(message: String) {
+        if (ttsReady) {
+            tts?.speak(
+                message.take(700),
+                TextToSpeech.QUEUE_FLUSH,
+                null,
+                "alter_voice"
+            )
+        }
+    }
+
+    override fun onDestroy() {
+        tts?.stop()
+        tts?.shutdown()
+        super.onDestroy()
+    }
+
     private val voiceRequest = 1001
     private lateinit var enable: Switch
     private lateinit var status: TextView
@@ -21,6 +50,7 @@ class MainActivity : Activity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        tts = TextToSpeech(this, this)
 
         val root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
@@ -28,7 +58,7 @@ class MainActivity : Activity() {
         }
 
         val title = TextView(this).apply {
-            text = "ALTER Autopilot 0.3 Voice"
+            text = "ALTER Autopilot 0.5 Voice + Screen"
             textSize = 24f
         }
 
@@ -145,7 +175,9 @@ class MainActivity : Activity() {
                         Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)
                     )
                 } else {
-                    status.text = service.readCurrentScreen()
+                    val content = service.readCurrentScreen()
+                    status.text = "Экран прочитан. ALTER произносит результат."
+                    speak(content)
                 }
             }
         }
@@ -214,16 +246,33 @@ class MainActivity : Activity() {
 
     private fun executeCommand(command: String) {
         when {
+            "что на экране" in command ||
+            "прочитай экран" in command ||
+            "прочти экран" in command -> {
+                val service = ScreenObserverService.instance
+                if (service == null) {
+                    val message = "Включи доступ к специальным возможностям."
+                    status.text = message
+                    speak(message)
+                    startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
+                } else {
+                    val content = service.readCurrentScreen()
+                    status.text = "ALTER читает экран."
+                    speak(content)
+                }
+            }
             "открой телеграм" in command ||
             "открыть телеграм" in command ||
             "открой telegram" in command -> {
                 try {
-                    val intent = Intent(Intent.ACTION_MAIN).apply {
-                        addCategory(Intent.CATEGORY_LAUNCHER)
+                    val intent = Intent(
+                        Intent.ACTION_VIEW,
+                        android.net.Uri.parse("tg://")
+                    ).apply {
                         setPackage("org.telegram.messenger")
-                        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                     }
                     startActivity(intent)
+                    speak("Открываю Телеграм.")
                 } catch (e: Exception) {
                     status.text = "Не удалось открыть Telegram."
                 }
@@ -239,6 +288,7 @@ class MainActivity : Activity() {
                 prefs.edit().putBoolean("enabled", false).apply()
                 enable.isChecked = false
                 status.text = "Автоответы выключены."
+                speak("Автоответы выключены.")
             }
 
             "включи автоответ" in command -> {
@@ -250,6 +300,7 @@ class MainActivity : Activity() {
                     prefs.edit().putBoolean("enabled", true).apply()
                     enable.isChecked = true
                     status.text = "Автоответы включены."
+                    speak("Автоответы включены.")
                 }
             }
 
