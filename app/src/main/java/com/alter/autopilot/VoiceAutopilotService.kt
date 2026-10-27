@@ -24,6 +24,7 @@ class VoiceAutopilotService : Service(), RecognitionListener {
 
     override fun onCreate() {
         super.onCreate()
+        AlterSpeaker.init(this)
         getSystemService(NotificationManager::class.java)
             .createNotificationChannel(
                 NotificationChannel(
@@ -115,16 +116,19 @@ class VoiceAutopilotService : Service(), RecognitionListener {
         )?.firstOrNull().orEmpty()
 
         if (words.isNotBlank()) {
-            // Фоновый режим принимает только команды с обращением к ALTER.
             val normalized = words.lowercase(Locale.ROOT).trim()
-            if (normalized.startsWith("альтер ") ||
-                normalized.startsWith("alter ")) {
-                try {
-                    AlterVoiceCommands.execute(this, words)
-                } catch (_: Exception) {}
+            if (normalized.startsWith("альтер") || normalized.startsWith("alter")) {
+                Thread {
+                    try {
+                        val reply = AlterVoiceCommands.execute(this, words)
+                        if (reply.isNotBlank()) {
+                            AlterSpeaker.speak(this, reply)
+                        }
+                    } catch (_: Exception) {}
+                }.start()
             }
         }
-        handler.postDelayed({ restartListening() }, 800)
+        handler.postDelayed({ restartListening() }, 1500)
     }
 
     override fun onError(error: Int) {

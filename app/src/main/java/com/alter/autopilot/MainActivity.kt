@@ -25,32 +25,14 @@ import com.googlecode.tesseract.android.TessBaseAPI
 import java.io.File
 
 
-class MainActivity : Activity(), TextToSpeech.OnInitListener {
-    private var tts: TextToSpeech? = null
-    private var ttsReady = false
-
-    override fun onInit(statusCode: Int) {
-        if (statusCode == TextToSpeech.SUCCESS) {
-            val result = tts?.setLanguage(Locale("ru", "RU"))
-            ttsReady = result != TextToSpeech.LANG_MISSING_DATA &&
-                result != TextToSpeech.LANG_NOT_SUPPORTED
-        }
-    }
+class MainActivity : Activity() {
 
     private fun speak(message: String) {
-        if (ttsReady) {
-            tts?.speak(
-                message.take(700),
-                TextToSpeech.QUEUE_FLUSH,
-                null,
-                "alter_voice"
-            )
-        }
+        AlterSpeaker.speak(this, message)
     }
 
     override fun onDestroy() {
-        tts?.stop()
-        tts?.shutdown()
+        AlterSpeaker.stop()
         super.onDestroy()
     }
 
@@ -67,7 +49,7 @@ class MainActivity : Activity(), TextToSpeech.OnInitListener {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        tts = TextToSpeech(this, this)
+        AlterSpeaker.init(this)
 
         val root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL

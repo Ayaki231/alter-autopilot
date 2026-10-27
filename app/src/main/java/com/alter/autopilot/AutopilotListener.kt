@@ -26,13 +26,13 @@ class AutopilotListener : NotificationListenerService() {
         val action = n.actions?.firstOrNull { a ->
             a.remoteInputs?.any { it.allowFreeFormInput && it.resultKey.isNotBlank() } == true
         } ?: return
-        val text = prefs.getString("reply", "")?.trim().orEmpty()
-        if (!isSafe(body, sender, text)) { record("Пропущено: проверка содержания (${sbn.packageName})"); return }
+
         val key = digest("${sbn.key}|$sender|$body")
         val conversationKey = digest("${sbn.packageName}|$sender")
         val now = System.currentTimeMillis()
         val cooldown = 30 * 60 * 1000L
         val history = getSharedPreferences("alter_cooldown", MODE_PRIVATE)
+
         synchronized(recent) {
             recent.entries.removeAll { now - it.value > 24 * 60 * 60 * 1000L }
             if (recent.containsKey(key)) return
@@ -48,19 +48,38 @@ class AutopilotListener : NotificationListenerService() {
             recent[key] = now
             if (recent.size > 300) recent.remove(recent.keys.first())
         }
-        try {
-            val inputs = action.remoteInputs ?: return
-            val results = Bundle()
-            inputs.filter { it.allowFreeFormInput }.forEach { results.putCharSequence(it.resultKey, text) }
-            val intent = Intent()
-            RemoteInput.addResultsToIntent(inputs, intent, results)
-            action.actionIntent.send(this, 0, intent)
-            record("Запрос отправки выполнен: ${sbn.packageName} (${sender.take(30)})")
-        } catch (e: PendingIntent.CanceledException) {
-            record("Ошибка: действие ответа недоступно (${sbn.packageName})")
-        } catch (e: Exception) {
-            record("Ошибка отправки: ${e.javaClass.simpleName}")
-        }
+
+        Thread {
+            try {
+                val useAi = prefs.getBoolean("ai_reply_enabled", false)
+                val replyText = if (useAi) {
+                    AlterAiEngine.generateReply(this, sender, body)
+                } else {
+                    prefs.getString("reply", "")?.trim().orEmpty()
+                }
+
+                if (!isSafe(body, sender, replyText)) {
+                    record("Пропущено: проверка содержания (${sbn.packageName})")
+                    return@Thread
+                }
+
+                val inputs = action.remoteInputs ?: return@Thread
+                val results = Bundle()
+                inputs.filter { it.allowFreeFormInput }.forEach { results.putCharSequence(it.resultKey, replyText) }
+                val intent = Intent()
+                RemoteInput.addResultsToIntent(inputs, intent, results)
+                action.actionIntent.send(this, 0, intent)
+                record("Запрос отправки выполнен: ${sbn.packageName} (${sender.take(30)}) -> $replyText")
+
+                if (prefs.getBoolean("voice_notify_replies", false)) {
+                    AlterSpeaker.speak(this, "Ответил для $sender: $replyText")
+                }
+            } catch (e: PendingIntent.CanceledException) {
+                record("Ошибка: действие ответа недоступно (${sbn.packageName})")
+            } catch (e: Exception) {
+                record("Ошибка отправки: ${e.javaClass.simpleName}")
+            }
+        }.start()
     }
 
     private fun isSafe(body: String, sender: String, reply: String): Boolean {
