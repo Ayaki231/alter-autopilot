@@ -97,6 +97,36 @@ class MainActivity : Activity() {
                 InputType.TYPE_TEXT_FLAG_MULTI_LINE
         }
 
+        val aiApiKey = EditText(this).apply {
+            hint = "Бесплатный ключ Gemini API"
+            setText(prefs.getString("ai_api_key", ""))
+        }
+
+        val aiReplyEnable = Switch(this).apply {
+            text = "Генерация автоответов через AI"
+            isChecked = prefs.getBoolean("ai_reply_enabled", true)
+        }
+
+        val ttsEnable = Switch(this).apply {
+            text = "Голосовые ответы вслух (TTS)"
+            isChecked = prefs.getBoolean("tts_enabled", true)
+        }
+
+        val testAiButton = Button(this).apply {
+            text = "⚡ ТЕСТ AI И ГОЛОСА"
+            setOnClickListener {
+                status.text = "Тестирую AI и голос..."
+                speak("Привет! Я Альтер. Проверяю подключение к нейросети.")
+                Thread {
+                    val res = AlterAiEngine.ask(this@MainActivity, "Скажи одно короткое приветствие для владельца.")
+                    runOnUiThread {
+                        status.text = res
+                        speak(res)
+                    }
+                }.start()
+            }
+        }
+
         val log = TextView(this).apply {
             textSize = 12f
         }
@@ -132,6 +162,9 @@ class MainActivity : Activity() {
                         .putBoolean("enabled", enable.isChecked)
                         .putString("packages", allowed.joinToString(","))
                         .putString("reply", reply.text.toString())
+                        .putBoolean("ai_reply_enabled", aiReplyEnable.isChecked)
+                        .putBoolean("tts_enabled", ttsEnable.isChecked)
+                        .putString("ai_api_key", aiApiKey.text.toString().trim())
                         .apply()
 
                     Toast.makeText(
@@ -160,7 +193,7 @@ class MainActivity : Activity() {
 
         listOf(
             title, info, mic, status, enable,
-            packages, reply, save, access,
+            packages, reply, aiApiKey, aiReplyEnable, ttsEnable, testAiButton, save, access,
             refreshButton, log
         ).forEach { root.addView(it) }
 
