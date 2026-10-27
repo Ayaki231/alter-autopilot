@@ -29,11 +29,22 @@ class AutopilotListener : NotificationListenerService() {
         val text = prefs.getString("reply", "")?.trim().orEmpty()
         if (!isSafe(body, sender, text)) { record("Пропущено: проверка содержания (${sbn.packageName})"); return }
         val key = digest("${sbn.key}|$sender|$body")
+        val conversationKey = digest("${sbn.packageName}|$sender")
         val now = System.currentTimeMillis()
+        val cooldown = 30 * 60 * 1000L
+        val history = getSharedPreferences("alter_cooldown", MODE_PRIVATE)
         synchronized(recent) {
             recent.entries.removeAll { now - it.value > 24 * 60 * 60 * 1000L }
             if (recent.containsKey(key)) return
-            // Mark before sending to avoid duplicate replies on notification updates.
+            val last = history.getLong(conversationKey, 0L)
+            if (last > 0 && now >= last && now - last < cooldown) {
+                record("Пропущено: ограничение 30 минут (${sbn.packageName})")
+                return
+            }
+            if (!history.edit().putLong(conversationKey, now).commit()) {
+                record("Пропущено: ошибка сохранения ограничения")
+                return
+            }
             recent[key] = now
             if (recent.size > 300) recent.remove(recent.keys.first())
         }
