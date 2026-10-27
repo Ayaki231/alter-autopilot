@@ -71,16 +71,17 @@ class MainActivity : Activity(), TextToSpeech.OnInitListener {
 
         val root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
+            setBackgroundColor(NexusTheme.background)
             setPadding(32, 32, 32, 24)
         }
 
         val title = TextView(this).apply {
-            text = "ALTER Autopilot 0.10 Floating AI"
+            text = "ALTER  |  NEXUS AI"
             textSize = 24f
         }
 
         val info = TextView(this).apply {
-            text = "Голосовой помощник и локальный автоответчик."
+            text = "PERSONAL AI SYSTEM  •  VERSION 0.11"
         }
 
         val mic = Button(this).apply {
@@ -299,7 +300,57 @@ class MainActivity : Activity(), TextToSpeech.OnInitListener {
         }
         root.addView(floatingButton)
 
+
+        // NEXUS_UI_011
+        title.apply {
+            textSize = 28f
+            setTextColor(NexusTheme.white)
+            setPadding(0, NexusTheme.dp(this@MainActivity, 12), 0,
+                NexusTheme.dp(this@MainActivity, 8))
+        }
+
+        info.apply {
+            textSize = 12f
+            setTextColor(NexusTheme.cyan)
+            letterSpacing = 0.12f
+            setPadding(0, 0, 0, NexusTheme.dp(this@MainActivity, 20))
+        }
+
+        for (index in 0 until root.childCount) {
+            val child = root.getChildAt(index)
+
+            if (child is Button) {
+                NexusTheme.styleButton(child)
+            } else if (child is TextView &&
+                child !== title &&
+                child !== info) {
+                child.setTextColor(NexusTheme.muted)
+            }
+
+            val params = child.layoutParams
+            if (params is LinearLayout.LayoutParams) {
+                params.bottomMargin = NexusTheme.dp(this, 10)
+                child.layoutParams = params
+            }
+        }
+
+        NexusTheme.styleButton(mic, true)
+        NexusTheme.styleButton(floatingButton, true)
+
+        visionResult.apply {
+            setBackgroundColor(NexusTheme.surface)
+            setTextColor(NexusTheme.white)
+            setPadding(
+                NexusTheme.dp(this@MainActivity, 16),
+                NexusTheme.dp(this@MainActivity, 16),
+                NexusTheme.dp(this@MainActivity, 16),
+                NexusTheme.dp(this@MainActivity, 16)
+            )
+        }
+
         setContentView(ScrollView(this).apply {
+            setBackgroundColor(NexusTheme.background)
+            fillViewport = true
             addView(root)
         })
 
