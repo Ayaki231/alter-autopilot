@@ -1,6 +1,7 @@
 package com.alter.autopilot
 
 import android.accessibilityservice.AccessibilityService
+import android.content.pm.PackageManager
 import android.view.accessibility.AccessibilityEvent
 import android.view.accessibility.AccessibilityNodeInfo
 
@@ -18,20 +19,48 @@ class ScreenObserverService : AccessibilityService() {
 
     fun readCurrentScreen(): String {
         val root = rootInActiveWindow
-            ?: return "Не удалось получить содержимое экрана."
+            ?: return "Не удалось прочитать экран. Проверь доступ к специальным возможностям."
+
         return try {
-            val lines = collectText(root)
-            if (lines.isEmpty()) "Текст на экране не найден."
-            else lines.joinToString("\n")
+            val packageName = root.packageName?.toString().orEmpty()
+            val appName = getAppName(packageName)
+            val lines = collectText(root, 40)
+
+            if (lines.isEmpty()) {
+                "Открыто приложение: $appName. Доступного текста на экране нет. Если здесь фотография, для её анализа потребуется функция распознавания изображений."
+            } else {
+                "Открыто приложение: $appName.\n" +
+                    lines.joinToString("\n")
+            }
         } finally {
             root.recycle()
         }
     }
 
+    private fun getAppName(packageName: String): String {
+        if (packageName.isBlank()) return "Неизвестное приложение"
+
+        return when (packageName) {
+            "org.telegram.messenger" -> "Telegram"
+            "org.thunderdog.challegram" -> "Telegram X"
+            "com.whatsapp" -> "WhatsApp"
+            "com.android.chrome" -> "Google Chrome"
+            "com.google.android.youtube" -> "YouTube"
+            "com.instagram.android" -> "Instagram"
+            "com.alter.autopilot" -> "ALTER Autopilot"
+            else -> {
+                try {
+                    val info = packageManager.getApplicationInfo(packageName, 0)
+                    packageManager.getApplicationLabel(info).toString()
+                } catch (_: Exception) {
+                    packageName
+                }
+            }
+        }
+    }
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
-        // Никакого постоянного сбора содержимого экрана.
-        // Чтение выполняется только по запросу пользователя.
+        // Чтение только по запросу пользователя.
     }
 
     override fun onInterrupt() {}
@@ -41,25 +70,50 @@ class ScreenObserverService : AccessibilityService() {
         var instance: ScreenObserverService? = null
             private set
 
-        fun collectText(node: AccessibilityNodeInfo?, limit: Int = 30): List<String> {
+        fun collectText(
+            node: AccessibilityNodeInfo?,
+            limit: Int = 40
+        ): List<String> {
             if (node == null) return emptyList()
-            val result = mutableListOf<String>()
 
-            fun visit(current: AccessibilityNodeInfo?) {
-                if (current == null || result.size >= limit) return
+            val result = LinkedHashSet<String>()
+            var visited = 0
 
-                val text = current.text?.toString()?.trim()
-                if (!text.isNullOrEmpty()) {
-                    result.add(text.take(150))
-                }
+            fun addText(value: CharSequence?) {
+                val text = value?.toString()
+                    ?.replace(Regex("\\s+"), " ")
+                    ?.trim()
+                    .orEmpty()
 
-                for (i in 0 until current.childCount) {
-                    visit(current.getChild(i))
+                if (text.isNotBlank()) {
+                    result.add(text.take(200))
                 }
             }
 
-            visit(node)
-            return result
+            fun visit(current: AccessibilityNodeInfo?, depth: Int) {
+                if (current == null ||
+                    result.size >= limit ||
+                    visited >= 250 ||
+                    depth > 20
+                ) return
+
+                visited++
+
+                addText(current.text)
+                addText(current.contentDescription)
+
+                if (android.os.Build.VERSION.SDK_INT >= 28) {
+                    addText(current.hintText)
+                }
+
+                for (i in 0 until current.childCount) {
+                    if (result.size >= limit) break
+                    visit(current.getChild(i), depth + 1)
+                }
+            }
+
+            visit(node, 0)
+            return result.toList()
         }
     }
 }

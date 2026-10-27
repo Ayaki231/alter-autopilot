@@ -12,7 +12,7 @@ android {
         }
     }
  namespace = "com.alter.autopilot"; compileSdk = 34
-    defaultConfig { applicationId = "com.alter.autopilot"; minSdk = 26; targetSdk = 34; versionCode = 5; versionName = "0.5" }
+    defaultConfig { applicationId = "com.alter.autopilot"; minSdk = 26; targetSdk = 34; versionCode = 6; versionName = "0.6" }
 
     buildTypes {
         getByName("release") {
