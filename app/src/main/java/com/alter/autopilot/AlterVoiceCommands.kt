@@ -48,41 +48,63 @@ object AlterVoiceCommands {
         val open = Regex("^открой\\s+(.+)$").find(command)
         if (open != null) {
             val app = open.groupValues[1].trim()
-            val packages = mapOf(
-                "telegram" to "org.telegram.messenger",
-                "телеграм" to "org.telegram.messenger",
-                "whatsapp" to "com.whatsapp",
-                "ватсап" to "com.whatsapp",
-                "youtube" to "com.google.android.youtube",
-                "ютуб" to "com.google.android.youtube",
-                "chrome" to "com.android.chrome",
-                "хром" to "com.android.chrome",
-                "настройки" to "com.android.settings"
+            val aliases = mapOf(
+                "телеграм" to "telegram",
+                "телеграмм" to "telegram",
+                "ватсап" to "whatsapp",
+                "ютуб" to "youtube",
+                "хром" to "chrome",
+                "плей маркет" to "play store",
+                "плеймаркет" to "play store"
             )
-            val pkg = packages[app] ?: return "Приложение пока неизвестно: $app"
-            val intent = context.packageManager
-                .getLaunchIntentForPackage(pkg)
-                ?: Intent(Intent.ACTION_MAIN).apply {
-                    addCategory(Intent.CATEGORY_LAUNCHER)
-                    setPackage(pkg)
-                }
 
-            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            val name = aliases[app] ?: app
+            val pm = context.packageManager
+
+            val query = Intent(Intent.ACTION_MAIN).apply {
+                addCategory(Intent.CATEGORY_LAUNCHER)
+            }
+
+            val matches = pm.queryIntentActivities(query, 0)
+
+            val target = matches.firstOrNull {
+                it.loadLabel(pm).toString().equals(
+                    name, ignoreCase = true
+                )
+            } ?: matches.firstOrNull {
+                it.loadLabel(pm).toString().contains(
+                    name, ignoreCase = true
+                )
+            }
+
+            if (target == null) {
+                return "Не нашёл приложение: $app"
+            }
+
+            val label = target.loadLabel(pm).toString()
+            val intent = Intent(Intent.ACTION_MAIN).apply {
+                addCategory(Intent.CATEGORY_LAUNCHER)
+                setClassName(
+                    target.activityInfo.packageName,
+                    target.activityInfo.name
+                )
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
 
             return try {
                 context.startActivity(intent)
-                "Открываю $app"
+                "Открываю $label"
             } catch (e: Exception) {
                 val accessibility = ScreenObserverService.instance
                 if (accessibility != null && accessibility.goHome()) {
                     android.os.Handler(
                         android.os.Looper.getMainLooper()
                     ).postDelayed({
-                        accessibility.tapByText(app)
+                        accessibility.tapByText(label)
                     }, 900)
-                    "Пробую открыть $app с главного экрана"
+                    "Пробую открыть $label"
                 } else {
-                    "Не удалось открыть $app: ${e.javaClass.simpleName}"
+                    "Не удалось открыть $label: ${e.javaClass.simpleName}"
                 }
             }
         }
