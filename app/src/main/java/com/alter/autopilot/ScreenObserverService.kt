@@ -100,6 +100,65 @@ class ScreenObserverService : AccessibilityService() {
         }
     }
 
+
+    // APP_CONTROL_015
+
+    fun scrollDown(): Boolean {
+        val root = rootInActiveWindow ?: return false
+
+        try {
+            fun scroll(node: AccessibilityNodeInfo?, depth: Int): Boolean {
+                if (node == null || depth > 20) return false
+
+                if (node.isScrollable &&
+                    node.performAction(
+                        AccessibilityNodeInfo.ACTION_SCROLL_FORWARD
+                    )
+                ) return true
+
+                for (i in 0 until node.childCount) {
+                    if (scroll(node.getChild(i), depth + 1)) {
+                        return true
+                    }
+                }
+
+                return false
+            }
+
+            return scroll(root, 0)
+        } finally {
+            root.recycle()
+        }
+    }
+
+    fun typeText(value: String): Boolean {
+        if (value.isBlank()) return false
+
+        val root = rootInActiveWindow ?: return false
+
+        try {
+            val focused = root.findFocus(
+                AccessibilityNodeInfo.FOCUS_INPUT
+            ) ?: return false
+
+            if (!focused.isEditable) return false
+
+            val arguments = android.os.Bundle().apply {
+                putCharSequence(
+                    AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE,
+                    value
+                )
+            }
+
+            return focused.performAction(
+                AccessibilityNodeInfo.ACTION_SET_TEXT,
+                arguments
+            )
+        } finally {
+            root.recycle()
+        }
+    }
+
     private fun getAppName(packageName: String): String {
         if (packageName.isBlank()) return "Неизвестное приложение"
 
