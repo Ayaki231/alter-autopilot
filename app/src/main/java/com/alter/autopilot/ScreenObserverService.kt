@@ -37,6 +37,69 @@ class ScreenObserverService : AccessibilityService() {
         }
     }
 
+
+    // SCREEN_CONTROL_014
+
+    fun goBack(): Boolean {
+        return performGlobalAction(GLOBAL_ACTION_BACK)
+    }
+
+    fun goHome(): Boolean {
+        return performGlobalAction(GLOBAL_ACTION_HOME)
+    }
+
+    fun tapByText(target: String): Boolean {
+        val query = target.trim()
+        if (query.isBlank()) return false
+
+        val root = rootInActiveWindow ?: return false
+
+        try {
+            val matches = mutableListOf<AccessibilityNodeInfo>()
+            var visited = 0
+
+            fun search(node: AccessibilityNodeInfo?, depth: Int) {
+                if (node == null || depth > 20 || visited >= 300) return
+
+                visited++
+
+                val text = node.text?.toString().orEmpty()
+                val description =
+                    node.contentDescription?.toString().orEmpty()
+
+                if (
+                    text.equals(query, ignoreCase = true) ||
+                    description.equals(query, ignoreCase = true)
+                ) {
+                    matches.add(node)
+                }
+
+                for (i in 0 until node.childCount) {
+                    search(node.getChild(i), depth + 1)
+                }
+            }
+
+            search(root, 0)
+
+            for (match in matches) {
+                var current: AccessibilityNodeInfo? = match
+
+                while (current != null) {
+                    if (current.isClickable) {
+                        return current.performAction(
+                            AccessibilityNodeInfo.ACTION_CLICK
+                        )
+                    }
+                    current = current.parent
+                }
+            }
+
+            return false
+        } finally {
+            root.recycle()
+        }
+    }
+
     private fun getAppName(packageName: String): String {
         if (packageName.isBlank()) return "Неизвестное приложение"
 

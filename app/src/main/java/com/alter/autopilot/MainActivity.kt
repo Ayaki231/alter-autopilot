@@ -659,6 +659,78 @@ class MainActivity : Activity(), TextToSpeech.OnInitListener {
 
     private fun executeCommand(command: String) {
 
+        // VOICE_SCREEN_ROUTER_014
+        val screenCommand = command
+            .lowercase(Locale.ROOT)
+            .trim()
+            .replace(
+                Regex("^(альтер|alter)[,\\s:!]+"),
+                ""
+            )
+            .trim()
+
+        val screenAction = when {
+            screenCommand in listOf(
+                "назад",
+                "вернись назад",
+                "шаг назад"
+            ) -> "BACK"
+
+            screenCommand in listOf(
+                "домой",
+                "на главный экран",
+                "главный экран"
+            ) -> "HOME"
+
+            screenCommand.startsWith("нажми на ") ||
+            screenCommand.startsWith("нажми ") ||
+            screenCommand.startsWith("кликни на ") ||
+            screenCommand.startsWith("кликни ") -> "TAP"
+
+            else -> null
+        }
+
+        if (screenAction != null) {
+            val service = ScreenObserverService.instance
+
+            if (service == null) {
+                status.text = "Включи службу ALTER в специальных возможностях."
+                speak("Для управления экраном включи специальные возможности.")
+                startActivity(
+                    Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)
+                )
+                return
+            }
+
+            val success = when (screenAction) {
+                "BACK" -> service.goBack()
+                "HOME" -> service.goHome()
+                "TAP" -> {
+                    val target = screenCommand
+                        .replace(
+                            Regex("^(нажми|кликни)\\s+(на\\s+)?"),
+                            ""
+                        )
+                        .trim()
+
+                    target.isNotBlank() && service.tapByText(target)
+                }
+                else -> false
+            }
+
+            status.text = if (success) {
+                "Команда выполнена: $screenCommand"
+            } else {
+                "Не удалось выполнить: $screenCommand"
+            }
+
+            // Не озвучиваем результат после нажатия:
+            // действие могло открыть другое приложение.
+            return
+        }
+
+
+
         // SMART_INTENT_ROUTER_012
         val intentResult = if (
             command.contains("автоответ")
