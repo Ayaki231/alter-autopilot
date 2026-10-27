@@ -12,7 +12,17 @@ import android.os.IBinder
 
 class VoiceAutopilotService : Service() {
 
+    // VOICE_STATE_0141
+    override fun onDestroy() {
+        isRunning = false
+        super.onDestroy()
+    }
+
     companion object {
+        @Volatile
+        var isRunning = false
+            private set
+
         const val ACTION_STOP =
             "com.alter.autopilot.STOP_VOICE"
 
@@ -67,7 +77,7 @@ class VoiceAutopilotService : Service() {
             CHANNEL_ID
         )
             .setContentTitle("ALTER Voice Autopilot")
-            .setContentText("Голосовой сервис запущен")
+            .setContentText("Сервис активен. Распознавание речи ещё не включено.")
             .setSmallIcon(android.R.drawable.ic_btn_speak_now)
             .setOngoing(true)
             .addAction(
@@ -91,6 +101,8 @@ class VoiceAutopilotService : Service() {
                 notification
             )
         }
+
+        isRunning = true
 
         return START_NOT_STICKY
     }

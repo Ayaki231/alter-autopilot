@@ -81,7 +81,7 @@ class MainActivity : Activity(), TextToSpeech.OnInitListener {
         }
 
         val info = TextView(this).apply {
-            text = "PERSONAL AI SYSTEM  •  VERSION 0.11"
+            text = "PERSONAL AI SYSTEM  •  VERSION ${BuildConfig.VERSION_NAME}"
         }
 
         val mic = Button(this).apply {
@@ -376,7 +376,7 @@ class MainActivity : Activity(), TextToSpeech.OnInitListener {
         }
 
         val startVoiceButton = Button(this).apply {
-            text = "VOICE ON"
+            text = "START SERVICE"
             setOnClickListener {
                 val permission = android.Manifest.permission.RECORD_AUDIO
 
@@ -392,7 +392,7 @@ class MainActivity : Activity(), TextToSpeech.OnInitListener {
                             VoiceAutopilotService::class.java
                         )
                         startForegroundService(serviceIntent)
-                        status.text = "Голосовой сервис запущен."
+                        status.text = "Сервис запущен. Прослушивание пока недоступно."
                     } catch (e: Exception) {
                         status.text = "Ошибка запуска: ${e.message}"
                     }
@@ -401,7 +401,7 @@ class MainActivity : Activity(), TextToSpeech.OnInitListener {
         }
 
         val stopVoiceButton = Button(this).apply {
-            text = "VOICE OFF"
+            text = "STOP SERVICE"
             setOnClickListener {
                 stopService(
                     Intent(
@@ -409,7 +409,7 @@ class MainActivity : Activity(), TextToSpeech.OnInitListener {
                         VoiceAutopilotService::class.java
                     )
                 )
-                status.text = "Голосовой сервис остановлен."
+                status.text = "Сервис остановлен."
             }
         }
 

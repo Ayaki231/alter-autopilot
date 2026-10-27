@@ -1,5 +1,6 @@
 plugins { id("com.android.application"); id("org.jetbrains.kotlin.android") }
 android {
+    buildFeatures { buildConfig = true }
     signingConfigs {
         create("alterRelease") {
             val keyFile = System.getenv("ALTER_KEYSTORE_PATH")
