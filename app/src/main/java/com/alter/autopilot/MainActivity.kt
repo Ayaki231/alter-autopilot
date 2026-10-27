@@ -350,7 +350,7 @@ class MainActivity : Activity(), TextToSpeech.OnInitListener {
 
         setContentView(ScrollView(this).apply {
             setBackgroundColor(NexusTheme.background)
-            fillViewport = true
+            isFillViewport = true
             addView(root)
         })
 
