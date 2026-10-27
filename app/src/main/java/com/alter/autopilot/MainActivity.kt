@@ -75,7 +75,7 @@ class MainActivity : Activity(), TextToSpeech.OnInitListener {
         }
 
         val title = TextView(this).apply {
-            text = "ALTER Autopilot 0.9 Local AI Vision"
+            text = "ALTER Autopilot 0.10 Floating AI"
             textSize = 24f
         }
 
@@ -266,6 +266,39 @@ class MainActivity : Activity(), TextToSpeech.OnInitListener {
         }
         root.addView(copyResult)
 
+
+        val floatingButton = Button(this).apply {
+            text = "🟣 ПЛАВАЮЩИЙ ALTER: ВКЛ / ВЫКЛ"
+            setOnClickListener {
+                if (!Settings.canDrawOverlays(this@MainActivity)) {
+                    status.text = "Разреши отображение поверх приложений."
+                    startActivity(
+                        Intent(
+                            Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                            android.net.Uri.parse("package:$packageName")
+                        )
+                    )
+                } else if (FloatingAlterService.active) {
+                    stopService(
+                        Intent(
+                            this@MainActivity,
+                            FloatingAlterService::class.java
+                        )
+                    )
+                    status.text = "Плавающий ALTER выключен."
+                } else {
+                    startService(
+                        Intent(
+                            this@MainActivity,
+                            FloatingAlterService::class.java
+                        )
+                    )
+                    status.text = "Запускаю плавающий ALTER."
+                }
+            }
+        }
+        root.addView(floatingButton)
+
         setContentView(ScrollView(this).apply {
             addView(root)
         })
@@ -349,7 +382,7 @@ class MainActivity : Activity(), TextToSpeech.OnInitListener {
                             "AI не смог определить объект."
                         } else {
                             categories.joinToString("\n") {
-                                val name = it.displayName().orElse("").ifBlank {
+                                val name = it.displayName().ifBlank {
                                     it.categoryName()
                                 }
                                 val percent = (it.score() * 100).toInt()
